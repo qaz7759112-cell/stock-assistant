@@ -1,0 +1,35 @@
+name: 每日自動更新股市資料
+
+# 設定機器人什麼時候起床 (這裡設定台灣時間每天下午 15:00 執行)
+on:
+  schedule:
+    - cron: '0 7 * * 1-5' # 這是 UTC 時間 7:00，等於台灣時間 15:00，且只在週一到週五執行
+  workflow_dispatch: # 允許您隨時手動點擊按鈕執行
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 取得最新的程式碼
+        uses: actions/checkout@v3
+
+      - name: 準備 Python 環境
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: 安裝需要的工具套件
+        run: pip install yfinance google-generativeai
+
+      - name: 執行資料抓取與 Gemini 分析
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }} # 呼叫我們藏好的鑰匙！
+        run: python update_data.py
+
+      - name: 將最新產生的 data.json 存回 GitHub
+        run: |
+          git config --global user.name 'GitHub Action Bot'
+          git config --global user.email 'action@github.com'
+          git add data.json
+          git commit -m "自動更新每日股市資料" || exit 0
+          git push
