@@ -45,4 +45,127 @@
 
             <!-- 右側恐慌指數 -->
             <div class="flex-1 bg-white/10 p-5 rounded-lg backdrop-blur-sm border border-white/10">
-                <div class="text-blue-20
+                <div class="text-blue-200 text-sm font-bold tracking-wider mb-2">恐慌指數 (VIX)</div>
+                <div class="flex items-baseline gap-3">
+                    <span id="vix-price" class="text-3xl font-extrabold text-white">--</span>
+                    <span id="vix-diff" class="text-xs font-bold px-2 py-0.5 rounded"></span>
+                </div>
+                <p class="text-sm mt-3 text-blue-100 font-medium">指數越高代表市場避險情緒越升溫。</p>
+            </div>
+        </div>
+
+        <!-- 2. 中間：重大黑天鵝預警 -->
+        <div class="bg-red-500/20 border border-red-500/50 p-5 rounded-lg backdrop-blur-md mb-5">
+            <p class="text-sm text-red-300 font-bold mb-2 flex items-center tracking-wide">
+                <svg class="w-5 h-5 mr-2 text-red-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                開盤前重大事件預警
+            </p>
+            <p id="warning-text" class="text-base leading-relaxed text-red-50 font-medium">
+                正在取得重大事件...
+            </p>
+        </div>
+
+        <!-- 3. 底部：關鍵資金避險指標 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- 卡片 A -->
+            <div class="bg-white/10 p-4 rounded-lg backdrop-blur-sm border border-white/5">
+                <div class="text-blue-200 text-xs font-bold mb-1 tracking-wider">美元 / 台幣</div>
+                <div class="flex items-baseline gap-2 mb-2">
+                    <span id="usd-price" class="text-2xl font-bold text-white">--</span>
+                    <span id="usd-diff" class="text-xs font-bold px-2 py-0.5 rounded"></span>
+                </div>
+                <p class="text-xs text-blue-100 leading-relaxed opacity-90">外資動向風向球，台幣貶值注意資金匯出。</p>
+            </div>
+            <!-- 卡片 B -->
+            <div class="bg-white/10 p-4 rounded-lg backdrop-blur-sm border border-white/5">
+                <div class="text-blue-200 text-xs font-bold mb-1 tracking-wider">黃金期貨</div>
+                <div class="flex items-baseline gap-2 mb-2">
+                    <span id="gold-price" class="text-2xl font-bold text-yellow-400">--</span>
+                    <span id="gold-diff" class="text-xs font-bold px-2 py-0.5 rounded"></span>
+                </div>
+                <p class="text-xs text-blue-100 leading-relaxed opacity-90">急漲代表市場極度恐慌。</p>
+            </div>
+            <!-- 卡片 C -->
+            <div class="bg-white/10 p-4 rounded-lg backdrop-blur-sm border border-white/5">
+                <div class="text-blue-200 text-xs font-bold mb-1 tracking-wider">布蘭特原油</div>
+                <div class="flex items-baseline gap-2 mb-2">
+                    <span id="oil-price" class="text-2xl font-bold text-orange-400">--</span>
+                    <span id="oil-diff" class="text-xs font-bold px-2 py-0.5 rounded"></span>
+                </div>
+                <p class="text-xs text-blue-100 leading-relaxed opacity-90">油價飆升恐引發通膨預期。</p>
+            </div>
+        </div>
+        
+        <!-- 底部聲明 -->
+        <div class="mt-6 text-center text-xs font-bold text-blue-200 opacity-60 tracking-wider">
+            系統由 GitHub Actions + Gemini AI 全自動驅動
+        </div>
+    </div>
+
+    <script>
+        // 渲染漲跌幅標籤的工具
+        function renderDiff(elementId, diffValue) {
+            const el = document.getElementById(elementId);
+            if (!diffValue && diffValue !== 0) return;
+            const num = parseFloat(diffValue);
+            
+            if (num > 0) {
+                el.innerText = '▲ +' + num;
+                el.className = 'text-xs font-bold text-red-300 bg-red-500/20 px-2 py-0.5 rounded';
+            } else if (num < 0) {
+                el.innerText = '▼ ' + num;
+                el.className = 'text-xs font-bold text-green-300 bg-green-500/20 px-2 py-0.5 rounded';
+            } else {
+                el.innerText = '- 0';
+                el.className = 'text-xs font-bold text-gray-300 bg-gray-500/20 px-2 py-0.5 rounded';
+            }
+        }
+
+        // 讀取最新的 data.json
+        const timestamp = new Date().getTime();
+        fetch('./data.json?t=' + timestamp)
+            .then(response => response.json())
+            .then(data => {
+                // 更新日期
+                document.getElementById('date-display').innerText = data.date + ' 即時更新';
+                
+                // 更新各項數值
+                document.getElementById('vix-price').innerText = data.vix.price;
+                renderDiff('vix-diff', data.vix.diff);
+                
+                document.getElementById('usd-price').innerText = data.usd_twd.price;
+                renderDiff('usd-diff', data.usd_twd.diff);
+                
+                document.getElementById('gold-price').innerText = data.gold.price;
+                renderDiff('gold-diff', data.gold.diff);
+                
+                document.getElementById('oil-price').innerText = data.oil.price;
+                renderDiff('oil-diff', data.oil.diff);
+
+                // 更新 AI 燈號與分析
+                const ai = data.ai_analysis;
+                const lightText = document.getElementById('light-text');
+                const lightCircle = document.getElementById('light-circle');
+                
+                lightText.innerText = ai.status_light;
+                if (ai.status_light.includes('紅')) {
+                    lightText.className = 'text-2xl font-extrabold text-red-400';
+                    lightCircle.className = 'w-4 h-4 rounded-full bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.8)] animate-pulse';
+                } else if (ai.status_light.includes('綠')) {
+                    lightText.className = 'text-2xl font-extrabold text-green-400';
+                    lightCircle.className = 'w-4 h-4 rounded-full bg-green-400 shadow-[0_0_12px_rgba(74,222,128,0.8)] animate-pulse';
+                } else {
+                    lightText.className = 'text-2xl font-extrabold text-yellow-400';
+                    lightCircle.className = 'w-4 h-4 rounded-full bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.8)] animate-pulse';
+                }
+
+                document.getElementById('light-desc').innerText = ai.status_desc;
+                document.getElementById('warning-text').innerText = ai.warning_event;
+            })
+            .catch(error => {
+                console.error('讀取失敗:', error);
+                document.getElementById('warning-text').innerText = '糟糕！無法讀取最新資料，請確認 GitHub 機器人是否已經成功產生了最新格式的 data.json 檔案。';
+            });
+    </script>
+</body>
+</html>
