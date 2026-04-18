@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的台股小管家</title>
+    <!-- 引入 Tailwind CSS 來美化網頁 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen font-sans flex items-center justify-center p-4">
+
+    <!-- 主要卡片區塊 -->
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200 animate-fade-in">
+        
+        <!-- 標頭區塊 -->
+        <div class="bg-gradient-to-br from-blue-600 to-indigo-800 p-8 text-center text-white relative">
+            <div class="absolute top-4 right-4 bg-white/20 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-sm shadow-sm">
+                自動更新中
+            </div>
+            <h1 class="text-3xl font-extrabold mb-2 tracking-wide flex justify-center items-center gap-2">
+                📈 台股小管家
+            </h1>
+            <p id="date-display" class="text-blue-100 text-sm font-medium opacity-90 tracking-wider">
+                讀取最新資料中...
+            </p>
+        </div>
+
+        <!-- 內容區塊 -->
+        <div class="p-8">
+            <!-- 股價顯示 -->
+            <div class="text-center mb-8">
+                <p class="text-sm font-bold text-slate-400 mb-2 tracking-widest">台積電 (2330) 最新收盤價</p>
+                <div class="flex justify-center items-baseline gap-1">
+                    <span class="text-6xl font-extrabold text-slate-800 tracking-tighter" id="price-display">--</span>
+                    <span class="text-2xl font-bold text-slate-400">元</span>
+                </div>
+            </div>
+
+            <!-- AI 分析報告 -->
+            <div class="bg-blue-50/70 rounded-2xl p-6 border border-blue-100 shadow-inner">
+                <h2 class="text-base font-extrabold text-blue-800 mb-3 flex items-center gap-2">
+                    💡 理財專員白話文解盤
+                </h2>
+                <p id="analysis-display" class="text-slate-700 leading-relaxed font-medium">
+                    正在與 Gemini 大腦連線，為您整理最新的股市分析報告...
+                </p>
+            </div>
+        </div>
+
+        <!-- 底部 -->
+        <div class="bg-slate-50 p-4 text-center text-xs font-bold text-slate-400 border-t border-slate-100 tracking-wider">
+            系統由 GitHub Actions + Gemini AI 全自動驅動
+        </div>
+    </div>
+
+    <script>
+        // 自動去抓取 GitHub 機器人產生的 data.json
+        fetch('./data.json')
+            .then(response => {
+                if (!response.ok) throw new Error('還沒找到資料庫');
+                return response.json();
+            })
+            .then(data => {
+                // 將抓到的資料放進網頁對應的格子裡
+                document.getElementById('date-display').innerText = '資料日期：' + data.date;
+                document.getElementById('price-display').innerText = data.tsmc_price;
+                document.getElementById('analysis-display').innerText = data.analysis;
+            })
+            .catch(error => {
+                document.getElementById('analysis-display').innerText = 'Oops！還沒抓到資料，請確認機器人是否已經成功跑完並產生 data.json！';
+                console.error('讀取失敗:', error);
+            });
+    </script>
+</body>
+</html>
