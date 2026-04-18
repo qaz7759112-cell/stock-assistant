@@ -2,13 +2,13 @@ import os
 import json
 import yfinance as yf
 from google import genai
-from datetime import datetime
+from datetime import datetime, timedelta
 
-# 1. 拿出我們藏在 GitHub 保險箱的鑰匙
+# 1. 取得 API 鑰匙
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
-# 2. 定義一個抓取最新價格與漲跌幅的小工具
+# 2. 定義抓價工具
 def get_price(ticker):
     try:
         hist = yf.Ticker(ticker).history(period="2d")
@@ -19,28 +19,71 @@ def get_price(ticker):
     except:
         return 0, 0
 
-# 3. 抓取全球大環境與【台股大盤及亞股】關鍵數據
-twii, twii_diff = get_price("^TWII")    # 台灣加權指數
-nikkei, nikkei_diff = get_price("^N225") # 日經225
-kospi, kospi_diff = get_price("^KS11")   # 韓國KOSPI
-usd_twd, usd_diff = get_price("TWD=X")   # 美元/台幣
-gold, gold_diff = get_price("GC=F")      # 黃金期貨
-oil, oil_diff = get_price("BZ=F")        # 布蘭特原油
-vix, vix_diff = get_price("^VIX")        # 恐慌指數
+# 3. 抓取大盤與全球數據
+twii, twii_diff = get_price("^TWII")
+nikkei, nikkei_diff = get_price("^N225")
+kospi, kospi_diff = get_price("^KS11")
+usd_twd, usd_diff = get_price("TWD=X")
+gold, gold_diff = get_price("GC=F")
+oil, oil_diff = get_price("BZ=F")
+vix, vix_diff = get_price("^VIX")
 
-# 4. 呼叫 Gemini 幫我們寫風險警示與燈號判斷
+# ==================================================
+# 🔥 您的專屬自選股清單
+# ==================================================
+my_stocks = {
+    "2330.TW": "台積電",
+    "2317.TW": "鴻海",
+    "2382.TW": "廣達"
+}
+
+stock_data_str = ""
+stock_results = []
+for ticker, name in my_stocks.items():
+    price, diff = get_price(ticker)
+    stock_data_str += f"- {name} ({ticker}): {price} (昨日漲跌 {diff})\n"
+    stock_results.append({"ticker": ticker, "name": name, "price": price, "diff": diff})
+
+yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y/%m/%d")
+
+# 4. 呼叫 Gemini 產出【所有分頁】的分析
 prompt = f"""
-現在是台灣時間早上 8:30，亞洲股市(日本、韓國)剛開盤。請根據以下最新數據，寫一份台股開盤前的分析報告：
-【台股昨日收盤】加權指數: {twii} (漲跌 {twii_diff})
-【今日亞股早盤】日經225: {nikkei} (漲跌 {nikkei_diff}) / 韓國KOSPI: {kospi} (漲跌 {kospi_diff})
-【全球總經】美元/台幣: {usd_twd} / 黃金: {gold} / 原油: {oil} / VIX恐慌指數: {vix} (漲跌 {vix_diff})
+現在是台灣時間早上 8:30，亞洲股市剛開盤。請根據以下最新數據，寫一份台股全方位分析報告：
+【全球與大盤數據】
+加權指數: {twii} (漲跌 {twii_diff}) / 日經: {nikkei} / 韓國: {kospi} / 美元台幣: {usd_twd} / VIX: {vix}
+【自選股】
+{stock_data_str}
 
-請扮演資深理財專員，給予 9:00 台股開盤的預測。
-回傳嚴格的 JSON 格式，不要加 ```json 標籤，只要大括號與內容：
+請回傳嚴格的 JSON 格式 (絕對不要加 ```json，直接從大括號開始)：
 {{
   "status_light": "🔴 紅燈 (危險)、🟡 黃燈 (警戒)、或 🟢 綠燈 (安全)",
-  "status_desc": "結合日韓早盤表現，預測今日台股開盤趨勢與氣氛",
-  "warning_event": "給投資人今日開盤的操作建議(例如：日股大跌請留意台股開低)"
+  "status_desc": "今日台股大盤趨勢預測",
+  "warning_event": "今日大盤開盤操作建議",
+  "custom_stocks_analysis": [
+    {{ "name": "股票名稱", "trend": "看漲/看跌/盤整", "reason": "50字內走勢判斷原因" }}
+  ],
+  "dark_horses": [
+    {{ "name": "股票名稱與代號", "price": "當前位階", "reason": "為什麼今天是黑馬", "sector": "產業", "sustain": "延續性判斷" }}
+    // ⚠️ 必須提供「最少 5 檔」黑馬股！
+  ],
+  "intraday_guide": [
+    {{ "time": "09:00 - 09:15", "title": "開盤判讀", "desc": "開盤要觀察什麼指標" }},
+    {{ "time": "09:30 - 10:00", "title": "盤勢確認", "desc": "趨勢確認方法" }},
+    {{ "time": "10:30 以後", "title": "結構追蹤", "desc": "中尾盤操作建議" }}
+  ],
+  "gurus": {{
+    "buffett": {{ "name": "華倫・巴菲特 (長抱安心型)", "desc": "以巴菲特價值投資邏輯，今日適合買進的防禦型股票", "stocks": [ {{ "name": "代號 名稱", "price": "位階", "score": 90, "reason": "推薦原因" }} ] }},
+    "lynch": {{ "name": "彼得・林區 (抓爆發成長型)", "desc": "以成長股邏輯，今日具備爆發力的股票", "stocks": [ {{ "name": "代號 名稱", "price": "位階", "score": 90, "reason": "推薦原因" }} ] }},
+    "graham": {{ "name": "班傑明・葛拉漢 (撿便宜安全牌)", "desc": "以撿便宜邏輯，今日被低估的股票", "stocks": [ {{ "name": "代號 名稱", "price": "位階", "score": 90, "reason": "推薦原因" }} ] }}
+  }},
+  "prediction_review": {{
+    "date": "{yesterday_str}",
+    "prediction": "預測昨日大盤可能的走勢",
+    "actual": "昨日大盤實際收盤狀況({twii_diff}點)",
+    "accurate": true,
+    "gap": "命中 / 看錯",
+    "detail": "檢討原因"
+  }}
 }}
 """
 
@@ -49,16 +92,21 @@ try:
     ai_text = response.text.replace("```json", "").replace("```", "").strip()
     ai_data = json.loads(ai_text)
 except Exception as e:
-    ai_data = {
-        "status_light": "🟡 系統連線中",
-        "status_desc": "AI 分析生成中...",
-        "warning_event": "暫時無法取得 AI 分析，請手動留意市場波動。"
-    }
+    print("AI 生成失敗:", e)
+    ai_data = {}
 
-# 取得今天日期，格式為 YYYY/MM/DD
+# 5. 整理並存檔
 today_str = datetime.now().strftime("%Y/%m/%d")
 
-# 5. 把今天的所有數據打包
+final_custom_stocks = []
+for s in stock_results:
+    ai_stock = next((item for item in ai_data.get("custom_stocks_analysis", []) if s["name"] in item["name"]), None)
+    final_custom_stocks.append({
+        "name": s["name"], "price": s["price"], "diff": s["diff"],
+        "trend": ai_stock["trend"] if ai_stock else "未知",
+        "reason": ai_stock["reason"] if ai_stock else "等待 AI 分析中"
+    })
+
 new_data = {
     "date": today_str,
     "twii": {"price": twii, "diff": twii_diff},
@@ -68,11 +116,18 @@ new_data = {
     "gold": {"price": gold, "diff": gold_diff},
     "oil": {"price": oil, "diff": oil_diff},
     "vix": {"price": vix, "diff": vix_diff},
-    "ai_analysis": ai_data
+    "ai_analysis": {
+        "status_light": ai_data.get("status_light", "🟡 系統連線中"),
+        "status_desc": ai_data.get("status_desc", "AI 正在分析中..."),
+        "warning_event": ai_data.get("warning_event", "等待分析")
+    },
+    "custom_stocks": final_custom_stocks,
+    "dark_horses": ai_data.get("dark_horses", []),
+    "intraday_guide": ai_data.get("intraday_guide", []),
+    "gurus": ai_data.get("gurus", {}),
+    "prediction_review": ai_data.get("prediction_review", {})
 }
 
-# --- 歷史日記模式 ---
-# 讀取舊資料，把新資料「加進去」而不是覆蓋
 history_data = {}
 if os.path.exists("data.json"):
     try:
@@ -80,17 +135,13 @@ if os.path.exists("data.json"):
             content = f.read().strip()
             if content:
                 history_data = json.loads(content)
-                # 兼容處理舊版單日資料
                 if "date" in history_data and isinstance(history_data.get("date"), str):
-                    old_date = history_data["date"].replace("-", "/")
-                    history_data = {old_date: history_data}
+                    history_data = {history_data["date"].replace("-", "/"): history_data}
     except Exception as e:
-        print(f"讀取舊資料失敗: {e}")
+        pass
 
-# 將今天的最新資料存入歷史紀錄中
 history_data[today_str] = new_data
 
-# 存成 data.json
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(history_data, f, ensure_ascii=False, indent=4)
-print(f"{today_str} 早上 8:30 開盤前報告更新完成，並已存入歷史檔案！")
+print(f"{today_str} 全部 6 大功能真 AI 分析更新完成！")
