@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台股投資分析小管家</title>
+    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Babel 讓瀏覽器能直接讀懂 React -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
@@ -16,7 +18,7 @@
         import { 
           LineChart, Clock, Activity, Target, Zap, DollarSign, 
           BookOpen, Globe, Award, Search, AlertCircle,
-          History, ListPlus, Plus, Trash2, CheckCircle, XCircle, Info, TrendingUp, TrendingDown, Calendar
+          History, ListPlus, Plus, Trash2, CheckCircle, XCircle, Info, TrendingUp, TrendingDown, Calendar, ArrowRight
         } from 'https://esm.sh/lucide-react@0.292.0?deps=react@18.2.0';
 
         // --- 自動計算最近的交易日 (避開六、日) ---
@@ -29,7 +31,6 @@
               const yyyy = current.getFullYear();
               const mm = String(current.getMonth() + 1).padStart(2, '0');
               const dd = String(current.getDate()).padStart(2, '0');
-              // 統一使用斜線格式
               days.push(`${yyyy}/${mm}/${dd}`); 
             }
             current.setDate(current.getDate() - 1);
@@ -39,72 +40,19 @@
 
         const mockDates = getRecentTradingDays(5); 
 
-        const mockDatabase = {
-          [mockDates[0]]: {
-            morningReport: {
-              usMarket: { dow: "+0.8%", sp500: "+1.2%", nasdaq: "+1.5%", events: "美國央行安撫市場，帶動科技股大漲。" },
-              sentiment: { status: "偏多 (氣氛樂觀)", reasons: ["昨晚美國科技股表現很好", "恐慌指數下降"] },
-              twFlow: { conclusion: "外資與投信主要佈局伺服器相關公司。", foreign: "買超 120 億", trust: "買超 35 億" },
-              focusStocks: [
-                { name: "廣達 (2382)", price: "260.5", reason: "代工 AI 伺服器，機構看好", trend: "up" },
-                { name: "奇鋐 (3017)", price: "615.0", reason: "散熱需求增溫", trend: "up" }
-              ]
-            },
-            intraday: [
-              { time: "09:05 - 09:10", title: "開盤判讀：真實的強勢", desc: "大盤開高走高，上漲家數擴大，表現健康。" },
-              { time: "09:30", title: "盤勢確認：適合找買點 (偏多)", desc: "多頭確認，買盤外溢至散熱族群。" },
-              { time: "10:00 - 10:30", title: "結構追蹤：高檔震盪不用怕 (後續預測)", desc: "股市漲高了難免有人想賣掉賺點錢，但目前賣壓不大。小提醒：10點過後不要去追今天已經漲太多的股票。" }
-            ],
-            gurus: {
-              buffett: {
-                name: "華倫・巴菲特 (長抱安心型)", desc: "尋找護城河深、獲利穩定的公司。",
-                stocks: [ 
-                  { name: "崇越 (5434)", price: "245.5", score: 92, reason: "ROE高，半導體材料龍頭。" },
-                  { name: "聯華 (1229)", price: "68.2", score: 88, reason: "做工業氣體的，生意幾乎被壟斷，非常穩定。" },
-                  { name: "統一 (1216)", price: "76.5", score: 85, reason: "食品業龍頭，獲利與配息非常穩定。" }
-                ]
-              },
-              lynch: {
-                name: "彼得・林區 (抓爆發成長型)", desc: "從生活周遭找正在「爆發性成長」的公司。",
-                stocks: [ 
-                  { name: "台光電 (2383)", price: "420.0", score: 95, reason: "AI 伺服器高階材料，賺錢速度加速。" },
-                  { name: "雙鴻 (3324)", price: "710.0", score: 90, reason: "水冷散熱革命，營收大爆發。" }
-                ]
-              },
-              graham: {
-                name: "班傑明・葛拉漢 (撿便宜安全牌)", desc: "專挑價格委屈、被大家忽略的好公司。",
-                stocks: [ 
-                  { name: "可成 (2474)", price: "215.5", score: 90, reason: "現金多到不可思議，買它像買保險箱。" },
-                  { name: "台灣大 (3045)", price: "105.0", score: 85, reason: "電信股具備極高防禦力，殖利率高。" }
-                ]
-              }
-            },
-            darkHorses: [
-              { name: "華城 (1519)", price: "850.0", reason: "台電強韌電網計畫受益", sector: "重電", aiSpillover: "否", sustain: "訂單能見度高" },
-              { name: "長榮航 (2618)", price: "35.8", reason: "旅遊大爆發，機票價格居高不下", sector: "航空", aiSpillover: "否", sustain: "暑假旺季即將到來" }
-            ]
-          }
-        };
-
-        const mockPredictionGap = [
-          { date: mockDates[1] || "2026/04/16", prediction: "預測今天大跌，不要買", actual: "大盤暴跌 250 點，生技股上漲", gap: "完全命中", accurate: true, detail: "系統昨晚看到美國通膨數字爆表，提早警告大家今天會大跌。結果完全吻合！逃過一劫。" },
-          { date: mockDates[2] || "2026/04/15", prediction: "預測今天會漲，AI 領軍", actual: "開高走低，大盤反而跌 50 點", gap: "系統看錯了", accurate: false, detail: "中午突然傳出地緣政治緊張的新聞，大家嚇到瘋狂賣股票。這種突發新聞是電腦難以預測的盲區。" }
-        ];
-
         function InvestmentAssistantApp() {
           const [activeTab, setActiveTab] = useState('morning');
           const [activeGuru, setActiveGuru] = useState('buffett');
           const [selectedDate, setSelectedDate] = useState(mockDates[0]);
-          const currentData = mockDatabase[selectedDate] || mockDatabase[mockDates[0]];
-
           const [realAiData, setRealAiData] = useState(null);
 
-          // 自選股記憶功能
+          // 瀏覽器本地自選股記憶 (靜態筆記用)
           const [customStocks, setCustomStocks] = useState(() => {
             const savedStocks = localStorage.getItem('myCustomStocks');
             if (savedStocks) return JSON.parse(savedStocks);
-            return [ { id: 1, name: "2330 台積電", price: "尚未連線", analysis: "系統已納入追蹤，靜態版僅提供記錄功能。" } ];
+            return [ { id: 1, name: "2330 台積電", price: "尚未連線", analysis: "靜態筆記本範例：您可以在此記錄自己的觀察。" } ];
           });
+          
           const [newStockInput, setNewStockInput] = useState('');
           const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -112,6 +60,7 @@
             localStorage.setItem('myCustomStocks', JSON.stringify(customStocks));
           }, [customStocks]);
 
+          // --- 抓取 GitHub 上的真實資料 ---
           useEffect(() => {
             const timestamp = new Date().getTime();
             fetch(`https://raw.githubusercontent.com/qaz7759112-cell/stock-assistant/main/data.json?t=${timestamp}`)
@@ -133,8 +82,8 @@
             const newStock = {
               id: Date.now(),
               name: newStockInput,
-              price: "待更新 (靜態版)",
-              analysis: `【系統紀錄】已將 ${newStockInput} 加入追蹤清單。此資料已自動保存在您的瀏覽器中。`
+              price: "待更新",
+              analysis: `【系統紀錄】已將 ${newStockInput} 加入您的瀏覽器清單。若要讓 AI 真實運算，請至 GitHub 修改 update_data.py。`
             };
             setCustomStocks([...customStocks, newStock]);
             setNewStockInput('');
@@ -156,19 +105,20 @@
             return <span className={`font-bold text-gray-300 bg-gray-500/20 rounded ${px}`}>- 0</span>;
           };
 
+          // 處理歷史資料讀取
           let currentRadarData = null;
           if (realAiData) {
-            if (realAiData[selectedDate]) {
-              currentRadarData = realAiData[selectedDate];
-            } else if (realAiData.date && realAiData.date.replace(/-/g, '/') === selectedDate) {
-              currentRadarData = realAiData;
-            }
+            if (realAiData[selectedDate]) currentRadarData = realAiData[selectedDate];
+            else if (realAiData.date && realAiData.date.replace(/-/g, '/') === selectedDate) currentRadarData = realAiData;
           }
 
           const isRadarData = !!currentRadarData;
           const rawDate = isRadarData && currentRadarData.date ? currentRadarData.date : selectedDate;
           const displayDate = rawDate.replace(/-/g, '/');
 
+          // =========================================================
+          // 🔥 全面串接真實 AI 數據，移除所有硬編碼假資料
+          // =========================================================
           const displayData = {
             twii: isRadarData && currentRadarData.twii ? currentRadarData.twii : { price: "--", diff: 0 },
             nikkei: isRadarData && currentRadarData.nikkei ? currentRadarData.nikkei : { price: "--", diff: 0 },
@@ -178,15 +128,23 @@
             gold: isRadarData && currentRadarData.gold ? currentRadarData.gold : { price: "--", diff: 0 },
             oil: isRadarData && currentRadarData.oil ? currentRadarData.oil : { price: "--", diff: 0 },
             ai: isRadarData && currentRadarData.ai_analysis ? currentRadarData.ai_analysis : {
-              status_light: "⚪ 尚未連線",
-              status_desc: "這天沒有真實數據，或是系統正在準備資料...",
-              warning_event: "請確認機器人是否已成功執行產生資料。"
+              status_light: "⚪ 等待更新", status_desc: "這天沒有真實數據...", warning_event: "請確認 GitHub 機器人是否已成功執行。"
             },
+            custom_stocks: isRadarData && currentRadarData.custom_stocks ? currentRadarData.custom_stocks : [],
+            dark_horses: isRadarData && currentRadarData.dark_horses ? currentRadarData.dark_horses : [],
+            intraday_guide: isRadarData && currentRadarData.intraday_guide ? currentRadarData.intraday_guide : [],
+            gurus: isRadarData && currentRadarData.gurus && Object.keys(currentRadarData.gurus).length > 0 ? currentRadarData.gurus : {
+              buffett: { name: "華倫・巴菲特", desc: "等待 AI 產生分析...", stocks: [] },
+              lynch: { name: "彼得・林區", desc: "等待 AI 產生分析...", stocks: [] },
+              graham: { name: "班傑明・葛拉漢", desc: "等待 AI 產生分析...", stocks: [] }
+            },
+            prediction_review: isRadarData && currentRadarData.prediction_review && currentRadarData.prediction_review.date ? currentRadarData.prediction_review : null,
             date: displayDate
           };
 
           return (
             <div className="min-h-screen bg-slate-50 font-sans">
+              {/* 頂部導航 */}
               <header className="bg-slate-900 text-white p-4 shadow-md sticky top-0 z-20">
                 <div className="max-w-6xl mx-auto flex items-center justify-between">
                   <div className="flex items-center space-x-2">
@@ -196,6 +154,7 @@
                 </div>
               </header>
 
+              {/* 日期選擇列 */}
               <div className="bg-white border-b border-gray-200 sticky top-[68px] z-10 shadow-sm">
                 <div className="max-w-6xl mx-auto p-3 flex items-center space-x-4 overflow-x-auto">
                   <div className="flex items-center text-gray-600 font-bold mr-2 whitespace-nowrap">
@@ -203,13 +162,10 @@
                   </div>
                   <div className="flex space-x-2">
                     {mockDates.map((date) => (
-                      <button
-                        key={date}
-                        onClick={() => setSelectedDate(date)}
+                      <button key={date} onClick={() => setSelectedDate(date)}
                         className={`px-4 py-1.5 rounded-full text-sm font-bold transition-colors whitespace-nowrap ${
                           selectedDate === date ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
+                        }`}>
                         {date}
                       </button>
                     ))}
@@ -218,45 +174,48 @@
               </div>
 
               <main className="max-w-6xl mx-auto p-4 flex flex-col md:flex-row gap-6 mt-2">
+                {/* 左側導航選單 */}
                 <aside className="w-full md:w-64 shrink-0">
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-[140px]">
                     <nav className="flex flex-col">
                       <button onClick={() => setActiveTab('morning')} className={`flex items-center p-4 transition-colors ${activeTab === 'morning' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
                         <BookOpen className="w-5 h-5 mr-3" /> 1. 每日開盤前報導
                       </button>
+                      <button onClick={() => setActiveTab('custom')} className={`flex items-center p-4 transition-colors ${activeTab === 'custom' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <ListPlus className="w-5 h-5 mr-3" /> 2. 我的自選股分析
+                      </button>
                       <button onClick={() => setActiveTab('intraday')} className={`flex items-center p-4 transition-colors ${activeTab === 'intraday' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <Clock className="w-5 h-5 mr-3" /> 2. 開盤教你怎麼看
+                        <Clock className="w-5 h-5 mr-3" /> 3. 盤中即時教學
                       </button>
                       <button onClick={() => setActiveTab('gurus')} className={`flex items-center p-4 transition-colors ${activeTab === 'gurus' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <Award className="w-5 h-5 mr-3" /> 3. 股神幫你挑好股
+                        <Award className="w-5 h-5 mr-3" /> 4. 股神幫你挑好股
                       </button>
                       <button onClick={() => setActiveTab('darkhorse')} className={`flex items-center p-4 transition-colors ${activeTab === 'darkhorse' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <Zap className="w-5 h-5 mr-3" /> 4. 偷偷起漲的黑馬
-                      </button>
-                      <button onClick={() => setActiveTab('custom')} className={`flex items-center p-4 transition-colors ${activeTab === 'custom' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <ListPlus className="w-5 h-5 mr-3" /> 5. 我的自選股分析
+                        <Zap className="w-5 h-5 mr-3" /> 5. 今日 5 檔大黑馬
                       </button>
                       <button onClick={() => setActiveTab('prediction')} className={`flex items-center p-4 transition-colors ${activeTab === 'prediction' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600 font-bold' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <History className="w-5 h-5 mr-3" /> 6. 檢討系統預測準度
+                        <History className="w-5 h-5 mr-3" /> 6. 檢討昨日預測
                       </button>
                     </nav>
                   </div>
                 </aside>
 
+                {/* 右側內容區 */}
                 <section className="flex-1 min-w-0">
+                  
+                  {/* 分頁 1：每日開盤前報導 */}
                   {activeTab === 'morning' && (
                     <div className="space-y-6 animate-fadeIn">
-                      <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                          <BookOpen className="mr-2 text-blue-600" /> 每日開盤前報導
-                        </h2>
-                      </div>
-                      <div className="bg-gradient-to-br from-blue-600 to-indigo-800 rounded-xl p-6 text-white shadow-lg border border-blue-500">
+                      <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                        <BookOpen className="mr-2 text-blue-600" /> 每日開盤前報導
+                      </h2>
+                      <div className="bg-gradient-to-br from-blue-600 to-indigo-800 rounded-xl p-6 text-white shadow-lg border border-blue-500 animate-fadeIn">
                         <div className="flex items-center justify-between mb-5 border-b border-white/20 pb-4">
                           <h3 className="text-xl font-bold flex items-center">
                             <Globe className="mr-2 w-6 h-6 text-blue-300" /> {displayData.date} 早盤大環境雷達
                           </h3>
                         </div>
+
                         <div className="bg-white/10 border border-white/20 p-6 rounded-xl backdrop-blur-md mb-5 text-center shadow-inner relative overflow-hidden">
                           <div className="text-blue-200 text-sm font-bold tracking-wider mb-2">🇹🇼 台灣加權指數 (大盤)</div>
                           <div className="flex justify-center items-baseline gap-4">
@@ -264,211 +223,117 @@
                             {renderDiffTag(displayData.twii.diff, true)}
                           </div>
                         </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
                           <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm border border-white/5">
-                            <div className="text-blue-200 text-xs font-bold mb-1 tracking-wider">🇯🇵 日經225 (早盤)</div>
+                            <div className="text-blue-200 text-xs font-bold mb-1">🇯🇵 日經225 (早盤)</div>
                             <div className="flex items-baseline gap-2">
                               <span className="text-2xl font-bold text-white">{displayData.nikkei.price}</span>
                               {renderDiffTag(displayData.nikkei.diff)}
                             </div>
                           </div>
                           <div className="bg-white/10 p-4 rounded-lg backdrop-blur-sm border border-white/5">
-                            <div className="text-blue-200 text-xs font-bold mb-1 tracking-wider">🇰🇷 韓國KOSPI (早盤)</div>
+                            <div className="text-blue-200 text-xs font-bold mb-1">🇰🇷 韓國KOSPI (早盤)</div>
                             <div className="flex items-baseline gap-2">
                               <span className="text-2xl font-bold text-white">{displayData.kospi.price}</span>
                               {renderDiffTag(displayData.kospi.diff)}
                             </div>
                           </div>
                         </div>
+
                         <div className="flex flex-col md:flex-row gap-4 mb-5">
                           <div className="flex-1 bg-white/10 p-5 rounded-lg backdrop-blur-sm border border-white/10">
-                            <div className="text-blue-200 text-sm font-bold tracking-wider mb-2">綜合風險狀態</div>
+                            <div className="text-blue-200 text-sm font-bold mb-2">綜合風險狀態</div>
                             <div className="flex items-center gap-3">
                               <span className="text-2xl font-extrabold text-yellow-400">{displayData.ai.status_light}</span>
                             </div>
-                            <p className="text-sm mt-3 text-blue-100 font-medium">{displayData.ai.status_desc}</p>
+                            <p className="text-sm mt-3 text-blue-100">{displayData.ai.status_desc}</p>
                           </div>
                           <div className="flex-1 bg-white/10 p-5 rounded-lg backdrop-blur-sm border border-white/10">
-                            <div className="text-blue-200 text-sm font-bold tracking-wider mb-2">恐慌指數 (VIX)</div>
+                            <div className="text-blue-200 text-sm font-bold mb-2">恐慌指數 (VIX)</div>
                             <div className="flex items-baseline gap-3">
                               <span className="text-3xl font-extrabold text-white">{displayData.vix.price}</span>
                               {renderDiffTag(displayData.vix.diff)}
                             </div>
                           </div>
                         </div>
-                        <div className="bg-red-500/20 border border-red-500/50 p-5 rounded-lg backdrop-blur-md mb-5">
+
+                        <div className="bg-red-500/20 border border-red-500/50 p-5 rounded-lg mb-5">
                           <p className="text-sm text-red-300 font-bold mb-2 flex items-center">
-                            <AlertCircle className="w-5 h-5 mr-2 text-red-400" /> 開盤前重大事件與操作建議
+                            <AlertCircle className="w-5 h-5 mr-2 text-red-400" /> 開盤前操作建議
                           </p>
                           <p className="text-base leading-relaxed text-red-50">{displayData.ai.warning_event}</p>
                         </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div className="bg-white/10 p-4 rounded-lg">
-                            <div className="text-blue-200 text-xs font-bold mb-1">美元 / 台幣</div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-2xl font-bold text-white">{displayData.usd_twd.price}</span>
-                              {renderDiffTag(displayData.usd_twd.diff)}
-                            </div>
+                            <div className="text-blue-200 text-xs font-bold mb-1">美元/台幣</div>
+                            <div className="flex items-baseline gap-2"><span className="text-2xl font-bold text-white">{displayData.usd_twd.price}</span>{renderDiffTag(displayData.usd_twd.diff)}</div>
                           </div>
                           <div className="bg-white/10 p-4 rounded-lg">
                             <div className="text-blue-200 text-xs font-bold mb-1">黃金期貨</div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-2xl font-bold text-yellow-400">{displayData.gold.price}</span>
-                              {renderDiffTag(displayData.gold.diff)}
-                            </div>
+                            <div className="flex items-baseline gap-2"><span className="text-2xl font-bold text-yellow-400">{displayData.gold.price}</span>{renderDiffTag(displayData.gold.diff)}</div>
                           </div>
                           <div className="bg-white/10 p-4 rounded-lg">
                             <div className="text-blue-200 text-xs font-bold mb-1">布蘭特原油</div>
-                            <div className="flex items-baseline gap-2">
-                              <span className="text-2xl font-bold text-orange-400">{displayData.oil.price}</span>
-                              {renderDiffTag(displayData.oil.diff)}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                          <h3 className="text-lg font-bold mb-3 flex items-center text-gray-700">
-                            <Globe className="mr-2 w-5 h-5" /> 昨晚美國股市表現
-                          </h3>
-                          <div className="grid grid-cols-3 gap-2 mb-4 text-center">
-                            <div className="bg-gray-50 p-2 rounded">
-                              <div className="text-sm text-gray-500">道瓊工業</div>
-                              {currentData.morningReport.usMarket.dow.includes('+') ? <UpText>{currentData.morningReport.usMarket.dow}</UpText> : <DownText>{currentData.morningReport.usMarket.dow}</DownText>}
-                            </div>
-                            <div className="bg-gray-50 p-2 rounded">
-                              <div className="text-sm text-gray-500">標普500</div>
-                              {currentData.morningReport.usMarket.sp500.includes('+') ? <UpText>{currentData.morningReport.usMarket.sp500}</UpText> : <DownText>{currentData.morningReport.usMarket.sp500}</DownText>}
-                            </div>
-                            <div className="bg-gray-50 p-2 rounded">
-                              <div className="text-sm text-gray-500">那斯達克</div>
-                              {currentData.morningReport.usMarket.nasdaq.includes('+') ? <UpText>{currentData.morningReport.usMarket.nasdaq}</UpText> : <DownText>{currentData.morningReport.usMarket.nasdaq}</DownText>}
-                            </div>
-                          </div>
-                          <div className="bg-blue-50 p-3 rounded text-sm text-blue-800 mb-4 flex items-start">
-                            <Info className="w-4 h-4 mr-2 mt-0.5 shrink-0" />
-                            {currentData.morningReport.usMarket.events}
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                          <h3 className="text-lg font-bold mb-3 flex items-center text-gray-700">
-                            <DollarSign className="mr-2 w-5 h-5" /> 股市大戶把錢往哪砸？
-                          </h3>
-                          <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200 mb-4">
-                            <div className="text-center">
-                              <div className="text-xs text-gray-500 mb-1 font-bold">外資 (外國機構)</div>
-                              <div className={`font-bold ${currentData.morningReport.twFlow.foreign.includes('買') ? 'text-red-600' : 'text-green-600'}`}>{currentData.morningReport.twFlow.foreign}</div>
-                            </div>
-                            <div className="text-center">
-                              <div className="text-xs text-gray-500 mb-1 font-bold">投信 (國內基金)</div>
-                              <div className={`font-bold ${currentData.morningReport.twFlow.trust.includes('買') ? 'text-red-600' : 'text-green-600'}`}>{currentData.morningReport.twFlow.trust}</div>
-                            </div>
-                          </div>
-                          <div className="bg-yellow-50 p-3 rounded border border-yellow-200 text-sm font-medium text-yellow-800">
-                            🎯 簡單說結論：{currentData.morningReport.twFlow.conclusion}
+                            <div className="flex items-baseline gap-2"><span className="text-2xl font-bold text-orange-400">{displayData.oil.price}</span>{renderDiffTag(displayData.oil.diff)}</div>
                           </div>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* 分頁 2：開盤教你怎麼看 */}
-                  {activeTab === 'intraday' && (
-                    <div className="space-y-6 animate-fadeIn">
-                      <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                        <Activity className="mr-2 text-blue-600" /> 開盤教你怎麼看
-                      </h2>
-                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative">
-                        <div className="absolute left-10 top-10 bottom-10 w-0.5 bg-gray-200"></div>
-                        {currentData.intraday.map((point, idx) => (
-                          <div key={idx} className="relative pl-12 mb-8 last:mb-0">
-                            <div className="absolute left-[-5px] top-1 w-3 h-3 bg-blue-500 rounded-full border-4 border-white shadow"></div>
-                            <div className="flex items-center mb-1">
-                              <Clock className="w-4 h-4 text-gray-400 mr-2" />
-                              <span className="font-mono text-sm font-bold text-blue-600">{point.time}</span>
-                              <span className="mx-2 text-gray-300">|</span>
-                              <span className="font-bold text-gray-800">{point.title}</span>
-                            </div>
-                            <div className="bg-gray-50 p-4 rounded-lg mt-2 text-gray-700 leading-relaxed text-sm">
-                              {point.desc}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 分頁 3：大師選股 */}
-                  {activeTab === 'gurus' && (
-                    <div className="space-y-6 animate-fadeIn">
-                      <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                        <Award className="mr-2 text-blue-600" /> 股神幫你挑好股
-                      </h2>
-                      <div className="flex space-x-2 border-b border-gray-200 pb-2">
-                        {Object.keys(currentData.gurus).map(key => (
-                          <button key={key} onClick={() => setActiveGuru(key)}
-                            className={`px-4 py-2 rounded-t-lg font-bold transition-colors ${activeGuru === key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                            {currentData.gurus[key].name.split(' ')[0]}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="text-xl font-bold text-gray-800 mb-3">{currentData.gurus[activeGuru].name}</h3>
-                        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r text-sm text-gray-700">
-                          {currentData.gurus[activeGuru].desc}
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {currentData.gurus[activeGuru].stocks.map((stock, idx) => (
-                            <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:shadow-md">
-                              <div className="flex justify-between items-start mb-2">
-                                <span className="text-lg font-bold text-blue-800">{stock.name} <span className="text-sm text-gray-500 ml-1">@{stock.price}元</span></span>
-                              </div>
-                              <p className="text-sm text-gray-600 mt-3">{stock.reason}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 分頁 4：黑馬股 */}
-                  {activeTab === 'darkhorse' && (
-                    <div className="space-y-6 animate-fadeIn">
-                      <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                        <Zap className="mr-2 text-yellow-500" /> 偷偷起漲的黑馬
-                      </h2>
-                      <div className="grid grid-cols-1 gap-4">
-                        {currentData.darkHorses.map((horse, idx) => (
-                          <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                            <div className="text-xl font-bold text-gray-800 mb-2">
-                              {horse.name} <span className="text-sm text-gray-500 ml-1">@{horse.price}元</span>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4 mt-2">
-                              <div><div className="text-xs text-gray-500 font-bold mb-1">🔍 為什麼電腦覺得它是黑馬？</div><div className="text-sm text-gray-700">{horse.reason}</div></div>
-                              <div><div className="text-xs text-gray-500 font-bold mb-1">⚠️ 會不會只漲一天就沒了？</div><div className="text-sm text-gray-700">{horse.sustain}</div></div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 分頁 5：自選股 */}
+                  {/* 分頁 2：我的自選股分析 (真 AI 讀取區 + 靜態備忘錄) */}
                   {activeTab === 'custom' && (
                     <div className="space-y-6 animate-fadeIn">
                       <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                        <ListPlus className="mr-2 text-blue-600" /> 我的自選股分析
+                        <ListPlus className="mr-2 text-blue-600" /> AI 每日自選股診斷
                       </h2>
-                      <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="text-sm font-bold text-gray-600 mb-3">請輸入您想追蹤的股票：</h3>
-                        <form onSubmit={handleAddStock} className="flex gap-2 relative">
+                      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm text-blue-800 flex items-start">
+                        <Info className="w-5 h-5 mr-2 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>系統運作說明：</strong> 每天早上 8:30，AI 會自動檢查您的清單。<br/>
+                          👉 若要讓 AI 幫您算命新的股票，請務必至 GitHub 修改 <code className="bg-white px-1 py-0.5 rounded text-blue-600 border">update_data.py</code> 的 <b>my_stocks</b>。下方的輸入框僅供瀏覽器紀錄備忘。
+                        </div>
+                      </div>
+
+                      {/* --- AI 真實分析結果展示 --- */}
+                      <div className="grid grid-cols-1 gap-5">
+                        {displayData.custom_stocks.length > 0 ? displayData.custom_stocks.map((stock, idx) => (
+                          <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                            <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+                              <div>
+                                <h3 className="text-xl font-bold text-gray-800">{stock.name}</h3>
+                                <div className="text-sm font-medium text-gray-500 mt-1 flex items-baseline gap-2">
+                                  收盤價: <span className="text-lg text-gray-700">{stock.price}</span> {renderDiffTag(stock.diff)}
+                                </div>
+                              </div>
+                              <div className={`px-4 py-2 rounded-full font-bold flex items-center shadow-sm ${
+                                stock.trend.includes('漲') ? 'bg-red-100 text-red-600 border border-red-200' : 
+                                stock.trend.includes('跌') ? 'bg-green-100 text-green-600 border border-green-200' : 
+                                'bg-yellow-100 text-yellow-700 border border-yellow-200'
+                              }`}>
+                                {stock.trend.includes('漲') && <TrendingUp className="w-4 h-4 mr-1"/>}
+                                {stock.trend.includes('跌') && <TrendingDown className="w-4 h-4 mr-1"/>}
+                                {stock.trend.includes('盤整') && <ArrowRight className="w-4 h-4 mr-1"/>}
+                                AI 判斷：{stock.trend}
+                              </div>
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded-lg text-gray-700 leading-relaxed border border-gray-100">
+                              <strong className="text-blue-700 flex items-center mb-2"><Activity className="w-4 h-4 mr-1"/> AI 判斷原因：</strong>
+                              <p className="text-sm">{stock.reason}</p>
+                            </div>
+                          </div>
+                        )) : <div className="text-gray-500 p-8 text-center bg-white rounded-xl border border-gray-100">尚無 AI 預測紀錄，請先手動執行機器人。</div>}
+                      </div>
+
+                      {/* --- 本機靜態備忘錄 --- */}
+                      <div className="mt-8 border-t border-gray-200 pt-6">
+                        <h3 className="text-lg font-bold text-gray-700 mb-3">瀏覽器靜態備忘錄 (此處新增不會觸發 AI)</h3>
+                        <form onSubmit={handleAddStock} className="flex gap-2 relative mb-4">
                           <div className="relative flex-1">
-                            <input type="text" value={newStockInput}
-                              onChange={(e) => { setNewStockInput(e.target.value); setShowSuggestions(true); }}
-                              onFocus={() => setShowSuggestions(true)}
-                              placeholder="輸入代號 (例如: 2382 廣達)" className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none" />
+                            <input type="text" value={newStockInput} onChange={(e) => { setNewStockInput(e.target.value); setShowSuggestions(true); }}
+                              onFocus={() => setShowSuggestions(true)} placeholder="輸入代號或名稱 (例如: 2382 廣達)" className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
                             {showSuggestions && newStockInput && (
                               <ul className="absolute z-10 w-full bg-white border mt-1 rounded-lg shadow-xl max-h-60 overflow-y-auto">
                                 {commonStocks.filter(s => s.code.includes(newStockInput) || s.name.includes(newStockInput)).map(s => (
@@ -480,55 +345,156 @@
                               </ul>
                             )}
                           </div>
-                          <button type="submit" className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold">加入清單</button>
+                          <button type="submit" className="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold">加入備忘</button>
                         </form>
-                      </div>
-                      <div className="grid grid-cols-1 gap-4">
-                        {customStocks.map(stock => (
-                          <div key={stock.id} className="bg-white p-5 rounded-xl shadow-sm border group">
-                            <div className="flex justify-between items-start mb-3">
-                              <h3 className="text-xl font-bold text-gray-800">{stock.name}</h3>
-                              <button onClick={() => handleDeleteStock(stock.id)} className="text-gray-400 hover:text-red-500 p-1 bg-gray-50 rounded"><Trash2 className="w-5 h-5" /></button>
+                        <div className="grid grid-cols-1 gap-4">
+                          {customStocks.map(stock => (
+                            <div key={stock.id} className="bg-white p-4 rounded-xl shadow-sm border flex justify-between items-center group">
+                              <div>
+                                <div className="font-bold text-gray-800">{stock.name}</div>
+                                <div className="text-xs text-gray-500 mt-1">{stock.analysis}</div>
+                              </div>
+                              <button onClick={() => handleDeleteStock(stock.id)} className="text-gray-400 hover:text-red-500 p-2"><Trash2 className="w-5 h-5" /></button>
                             </div>
-                            <div className="bg-blue-50/50 p-4 rounded-lg text-sm text-gray-700 border border-blue-50">{stock.analysis}</div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
 
-                  {/* 分頁 6：預測準度 */}
-                  {activeTab === 'prediction' && (
+                  {/* 分頁 3：盤中即時教學 */}
+                  {activeTab === 'intraday' && (
                     <div className="space-y-6 animate-fadeIn">
                       <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                        <History className="mr-2 text-blue-600" /> 檢討系統預測準度
+                        <Activity className="mr-2 text-blue-600" /> AI 盤中即時教學
                       </h2>
-                      <div className="space-y-4">
-                        {mockPredictionGap.map((gap, idx) => (
-                          <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-stretch gap-4 hover:shadow-md">
-                            <div className="md:w-1/5 flex flex-col justify-center items-center p-3 bg-gray-50 rounded-lg">
-                              <span className="text-sm font-bold text-gray-500">{gap.date}</span>
-                              <div className={`mt-2 flex items-center font-bold ${gap.accurate ? 'text-green-600' : 'text-red-500'}`}>
-                                {gap.accurate ? <CheckCircle className="w-5 h-5 mr-1" /> : <XCircle className="w-5 h-5 mr-1" />} {gap.gap}
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 relative">
+                        {displayData.intraday_guide.length > 0 ? (
+                          <>
+                            <div className="absolute left-10 top-10 bottom-10 w-0.5 bg-gray-200"></div>
+                            {displayData.intraday_guide.map((point, idx) => (
+                              <div key={idx} className="relative pl-12 mb-8 last:mb-0">
+                                <div className="absolute left-[-5px] top-1 w-3 h-3 bg-blue-500 rounded-full border-4 border-white shadow"></div>
+                                <div className="flex items-center mb-1">
+                                  <Clock className="w-4 h-4 text-gray-400 mr-2" />
+                                  <span className="font-mono text-sm font-bold text-blue-600">{point.time}</span>
+                                  <span className="mx-2 text-gray-300">|</span>
+                                  <span className="font-bold text-gray-800">{point.title}</span>
+                                </div>
+                                <div className="bg-gray-50 p-4 rounded-lg mt-2 text-gray-700 leading-relaxed text-sm">{point.desc}</div>
                               </div>
-                            </div>
-                            <div className="md:w-2/5 border-l-4 border-blue-300 pl-4 py-2">
-                              <div className="text-xs text-gray-500 font-bold mb-1 flex items-center">早上電腦預測</div><div className="text-gray-800 font-medium">{gap.prediction}</div>
-                            </div>
-                            <div className="md:w-2/5 border-l-4 border-gray-300 pl-4 py-2">
-                              <div className="text-xs text-gray-500 font-bold mb-1 flex items-center">下午真實情況</div><div className="text-gray-800 font-medium">{gap.actual}</div><div className="text-sm text-gray-500 mt-2 border-t border-gray-100 pt-2">{gap.detail}</div>
-                            </div>
-                          </div>
-                        ))}
+                            ))}
+                          </>
+                        ) : (
+                          <div className="text-gray-500 text-center py-10">今日尚無教學資料，請確認機器人已執行。</div>
+                        )}
                       </div>
                     </div>
                   )}
+
+                  {/* 分頁 4：股神幫你挑好股 */}
+                  {activeTab === 'gurus' && (
+                    <div className="space-y-6 animate-fadeIn">
+                      <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                        <Award className="mr-2 text-blue-600" /> 股神幫你挑好股
+                      </h2>
+                      <div className="flex space-x-2 border-b border-gray-200 pb-2">
+                        {Object.keys(displayData.gurus).map(key => (
+                          <button key={key} onClick={() => setActiveGuru(key)}
+                            className={`px-4 py-2 rounded-t-lg font-bold transition-colors ${activeGuru === key ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                            {displayData.gurus[key].name ? displayData.gurus[key].name.split(' ')[0] : key}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h3 className="text-xl font-bold text-gray-800 mb-3">{displayData.gurus[activeGuru]?.name || "處理中..."}</h3>
+                        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r text-sm text-gray-700">
+                          {displayData.gurus[activeGuru]?.desc || "等待資料..."}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {displayData.gurus[activeGuru]?.stocks && displayData.gurus[activeGuru].stocks.length > 0 ? (
+                            displayData.gurus[activeGuru].stocks.map((stock, idx) => (
+                              <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:shadow-md">
+                                <div className="flex justify-between items-start mb-2">
+                                  <span className="text-lg font-bold text-blue-800">{stock.name} <span className="text-sm text-gray-500 ml-1">@{stock.price}</span></span>
+                                  <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">評分: {stock.score}</span>
+                                </div>
+                                <p className="text-sm text-gray-600 mt-3">{stock.reason}</p>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-gray-500 p-4">AI 尚未推薦此類型股票。</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 分頁 5：今日 5 檔大黑馬 */}
+                  {activeTab === 'darkhorse' && (
+                    <div className="space-y-6 animate-fadeIn">
+                      <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                        <Zap className="mr-2 text-yellow-500" /> AI 今日嚴選大黑馬
+                      </h2>
+                      <div className="grid grid-cols-1 gap-4">
+                        {displayData.dark_horses.length > 0 ? displayData.dark_horses.map((horse, idx) => (
+                          <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+                            <div className="text-xl font-bold text-gray-800 mb-2 flex items-center">
+                              {horse.name} <span className="text-sm text-gray-500 ml-2 font-normal">位階: {horse.price}</span>
+                              <span className="ml-3 text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold">{horse.sector}</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 pt-4 mt-3">
+                              <div><div className="text-xs text-gray-500 font-bold mb-1 flex items-center"><Search className="w-3 h-3 mr-1"/>入選原因</div><div className="text-sm text-gray-700">{horse.reason}</div></div>
+                              <div><div className="text-xs text-gray-500 font-bold mb-1 flex items-center"><Target className="w-3 h-3 mr-1"/>延續性判斷</div><div className="text-sm text-gray-700">{horse.sustain}</div></div>
+                            </div>
+                          </div>
+                        )) : <div className="text-gray-500 p-8 text-center bg-white rounded-xl border border-gray-100">這天沒有黑馬股推薦紀錄，請等待 AI 機器人執行。</div>}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 分頁 6：檢討昨日預測 */}
+                  {activeTab === 'prediction' && (
+                    <div className="space-y-6 animate-fadeIn">
+                      <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                        <History className="mr-2 text-blue-600" /> 檢討昨日預測
+                      </h2>
+                      {displayData.prediction_review ? (
+                        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-stretch gap-4 hover:shadow-md transition-shadow">
+                          <div className="md:w-1/5 flex flex-col justify-center items-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+                            <span className="text-sm font-bold text-gray-500">{displayData.prediction_review.date}</span>
+                            <div className={`mt-2 flex items-center font-bold text-lg ${displayData.prediction_review.accurate ? 'text-green-600' : 'text-red-500'}`}>
+                              {displayData.prediction_review.accurate ? <CheckCircle className="w-5 h-5 mr-1" /> : <XCircle className="w-5 h-5 mr-1" />} 
+                              {displayData.prediction_review.gap}
+                            </div>
+                          </div>
+                          <div className="md:w-2/5 border-l-4 border-blue-300 pl-4 py-2">
+                            <div className="text-xs text-gray-500 font-bold mb-1 flex items-center">昨日開盤前 AI 預測</div>
+                            <div className="text-gray-800 font-medium">{displayData.prediction_review.prediction}</div>
+                          </div>
+                          <div className="md:w-2/5 border-l-4 border-gray-300 pl-4 py-2">
+                            <div className="text-xs text-gray-500 font-bold mb-1 flex items-center">昨日實際收盤情況</div>
+                            <div className="text-gray-800 font-medium">{displayData.prediction_review.actual}</div>
+                            <div className="text-sm text-gray-500 mt-3 border-t border-gray-100 pt-3">{displayData.prediction_review.detail}</div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-gray-500 p-8 text-center bg-white rounded-xl border border-gray-100">尚無檢討紀錄。</div>
+                      )}
+                    </div>
+                  )}
+
                 </section>
               </main>
-              <style dangerouslySetInnerHTML={{__html: `@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } } .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }`}} />
+              
+              <style dangerouslySetInnerHTML={{__html: `
+                @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+                .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+              `}} />
             </div>
           );
         }
+
         const root = createRoot(document.getElementById('root'));
         root.render(<InvestmentAssistantApp />);
     </script>
