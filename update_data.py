@@ -1,11 +1,11 @@
 import os
 import json
 import yfinance as yf
-import google.generativeai as genai
+from google import genai
 
 # 1. 拿出我們藏在 GitHub 保險箱的鑰匙
 api_key = os.environ.get("GEMINI_API_KEY")
-genai.configure(api_key=api_key)
+client = genai.Client(api_key=api_key)
 
 # 2. 抓取真實數據 (這裡以抓取台積電收盤價為例)
 tsmc = yf.Ticker("2330.TW")
@@ -13,9 +13,11 @@ hist = tsmc.history(period="1d")
 close_price = round(hist['Close'].iloc[-1], 2)
 
 # 3. 呼叫 Gemini 幫我們寫分析 (使用最新的 Flash 模型，速度快且免費額度高)
-model = genai.GenerativeModel('gemini-1.5-flash')
 prompt = f"台積電今天收盤價是 {close_price}。請扮演一位理財專員，用一句新手能懂的白話文，評論一下這個價格。"
-response = model.generate_content(prompt)
+response = client.models.generate_content(
+    model='gemini-2.5-flash',
+    contents=prompt,
+)
 
 # 4. 把 Gemini 寫好的內容，打包成 JSON 檔案 (供前端網頁讀取)
 output_data = {
