@@ -23,7 +23,7 @@ jobs:
           python-version: '3.10'
 
       - name: 安裝需要的工具套件
-        run: pip install yfinance google-generativeai
+        run: pip install yfinance google-genai
 
       - name: 執行資料抓取與 Gemini 分析
         env:
