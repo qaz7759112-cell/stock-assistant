@@ -6,6 +6,10 @@ on:
     - cron: '0 7 * * 1-5' # 這是 UTC 時間 7:00，等於台灣時間 15:00，且只在週一到週五執行
   workflow_dispatch: # 允許您隨時手動點擊按鈕執行
 
+# 加入權限設定，允許機器人把檔案寫入 GitHub 儲存庫 (極度重要，否則無法儲存 JSON 檔)
+permissions:
+  contents: write
+
 jobs:
   update-data:
     runs-on: ubuntu-latest
