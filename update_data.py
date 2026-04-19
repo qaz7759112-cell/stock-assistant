@@ -19,7 +19,7 @@ def get_price(ticker):
     except:
         return 0, 0
 
-# 3. 抓取大盤、全球數據與【真實美國三大指數】
+# 3. 抓取大盤、全球數據與美國三大指數
 twii, twii_diff = get_price("^TWII")
 nikkei, nikkei_diff = get_price("^N225")
 kospi, kospi_diff = get_price("^KS11")
@@ -27,39 +27,19 @@ usd_twd, usd_diff = get_price("TWD=X")
 gold, gold_diff = get_price("GC=F")
 oil, oil_diff = get_price("BZ=F")
 vix, vix_diff = get_price("^VIX")
-
-# 美國三大指數
 dow, dow_diff = get_price("^DJI")
 sp500, sp500_diff = get_price("^GSPC")
 nasdaq, nasdaq_diff = get_price("^IXIC")
 
-# ==================================================
-# 🔥 您的專屬自選股清單
-# ==================================================
-my_stocks = {
-    "2330.TW": "台積電",
-    "2317.TW": "鴻海",
-    "2382.TW": "廣達"
-}
-
-stock_data_str = ""
-stock_results = []
-for ticker, name in my_stocks.items():
-    price, diff = get_price(ticker)
-    stock_data_str += f"- {name} ({ticker}): {price} (昨日漲跌 {diff})\n"
-    stock_results.append({"ticker": ticker, "name": name, "price": price, "diff": diff})
-
 yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y/%m/%d")
 
-# 4. 呼叫 Gemini 產出【所有分頁】的全真實分析
+# 4. 呼叫 Gemini 產出全真實分析 (加入強制數量指令)
 prompt = f"""
 現在是台灣時間早上 8:30，亞洲股市剛開盤。請根據以下真實最新數據，寫一份台股全方位分析報告：
 【全球與大盤數據】
 加權指數: {twii} (漲跌 {twii_diff}) 
 道瓊: {dow} / 標普500: {sp500} / 那斯達克: {nasdaq}
 日經: {nikkei} / 韓國: {kospi} / 美元台幣: {usd_twd} / VIX: {vix}
-【自選股】
-{stock_data_str}
 
 請回傳嚴格的 JSON 格式 (絕對不要加 ```json 標記，直接從大括號開始)：
 {{
@@ -74,21 +54,26 @@ prompt = f"""
     "foreign": "預估買超或賣超",
     "trust": "預估買超或賣超"
   }},
-  "custom_stocks_analysis": [
-    {{ "name": "股票名稱", "trend": "看漲/看跌/盤整", "reason": "50字內走勢判斷原因" }}
-  ],
   "dark_horses": [
     {{ "name": "股票名稱與代號", "price": "當前位階", "reason": "為什麼今天是黑馬", "sector": "產業", "sustain": "延續性判斷" }}
+    // ⚠️ 嚴格指令：請務必給出【剛好 5 檔】不同的黑馬股，不可多也不可少！
   ],
   "intraday_guide": [
-    {{ "time": "09:00 - 09:15", "title": "開盤判讀", "desc": "開盤要觀察什麼指標" }},
-    {{ "time": "09:30 - 10:00", "title": "盤勢確認", "desc": "趨勢確認方法" }},
-    {{ "time": "10:30 以後", "title": "結構追蹤", "desc": "中尾盤操作建議" }}
+    {{ "time": "09:30 早盤確認", "title": "早盤判讀", "desc": "開盤要觀察什麼指標" }},
+    {{ "time": "10:30 盤中轉折", "title": "盤中確認", "desc": "趨勢確認方法" }},
+    {{ "time": "12:30 尾盤佈局", "title": "尾盤追蹤", "desc": "中尾盤操作建議" }}
   ],
   "gurus": {{
-    "buffett": {{ "name": "華倫・巴菲特 (長抱安心型)", "desc": "以巴菲特價值投資邏輯，今日適合買進的防禦型股票", "stocks": [ {{ "name": "代號 名稱", "price": "位階", "score": 90, "reason": "推薦原因" }} ] }},
-    "lynch": {{ "name": "彼得・林區 (抓爆發成長型)", "desc": "以成長股邏輯，今日具備爆發力的股票", "stocks": [ {{ "name": "代號 名稱", "price": "位階", "score": 90, "reason": "推薦原因" }} ] }},
-    "graham": {{ "name": "班傑明・葛拉漢 (撿便宜安全牌)", "desc": "以撿便宜邏輯，今日被低估的股票", "stocks": [ {{ "name": "代號 名稱", "price": "位階", "score": 90, "reason": "推薦原因" }} ] }}
+    "buffett": {{ "name": "華倫・巴菲特 (長抱安心型)", "desc": "以巴菲特價值投資邏輯，今日適合買進的防禦型股票", "stocks": [
+      // ⚠️ 嚴格指令：請務必給出【剛好 3 檔】股票！
+      {{ "name": "代號 名稱", "price": "位階", "score": 90, "reason": "推薦原因" }}
+    ] }},
+    "lynch": {{ "name": "彼得・林區 (抓爆發成長型)", "desc": "以成長股邏輯，今日具備爆發力的股票", "stocks": [
+      // ⚠️ 嚴格指令：請務必給出【剛好 3 檔】股票！
+    ] }},
+    "graham": {{ "name": "班傑明・葛拉漢 (撿便宜安全牌)", "desc": "以撿便宜邏輯，今日被低估的股票", "stocks": [
+      // ⚠️ 嚴格指令：請務必給出【剛好 3 檔】股票！
+    ] }}
   }},
   "prediction_review": {{
     "date": "{yesterday_str}",
@@ -112,15 +97,6 @@ except Exception as e:
 # 5. 整理並存檔
 today_str = datetime.now().strftime("%Y/%m/%d")
 
-final_custom_stocks = []
-for s in stock_results:
-    ai_stock = next((item for item in ai_data.get("custom_stocks_analysis", []) if s["name"] in item["name"]), None)
-    final_custom_stocks.append({
-        "name": s["name"], "price": s["price"], "diff": s["diff"],
-        "trend": ai_stock["trend"] if ai_stock else "等待更新",
-        "reason": ai_stock["reason"] if ai_stock else "等待 AI 分析中"
-    })
-
 new_data = {
     "date": today_str,
     "twii": {"price": twii, "diff": twii_diff},
@@ -142,7 +118,6 @@ new_data = {
         "status_desc": ai_data.get("status_desc", "AI 正在分析中..."),
         "warning_event": ai_data.get("warning_event", "等待分析")
     },
-    "custom_stocks": final_custom_stocks,
     "dark_horses": ai_data.get("dark_horses", []),
     "intraday_guide": ai_data.get("intraday_guide", []),
     "gurus": ai_data.get("gurus", {}),
@@ -165,4 +140,4 @@ history_data[today_str] = new_data
 
 with open("data.json", "w", encoding="utf-8") as f:
     json.dump(history_data, f, ensure_ascii=False, indent=4)
-print(f"{today_str} 100% 全真實資料分析更新完成！")
+print(f"{today_str} 數量強制修正版更新完成！")
