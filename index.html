@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>台股投資分析小管家</title>
-    <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Babel 讓瀏覽器能直接讀懂 React -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
@@ -18,7 +16,7 @@
         import { 
           LineChart, Clock, Activity, Target, Zap, DollarSign, 
           BookOpen, Globe, Award, Search, AlertCircle,
-          History, ListPlus, CheckCircle, XCircle, Info, TrendingUp, TrendingDown, Calendar, ArrowRight, Settings
+          History, ListPlus, CheckCircle, XCircle, Info, TrendingUp, TrendingDown, Calendar, ArrowRight, Settings, Key, Loader2, Play, RefreshCw, Trash2, Plus
         } from 'https://esm.sh/lucide-react@0.292.0?deps=react@18.2.0';
 
         // 產生預設日期
@@ -39,24 +37,23 @@
         };
 
         function InvestmentAssistantApp() {
-          // --- 預設進入第一分頁：國際情勢 ---
+          // --- 左側選單排序：預設進入第一分頁 ---
           const [activeTab, setActiveTab] = useState('intl'); 
           const [activeGuru, setActiveGuru] = useState('buffett');
           
-          // 動態日期清單
           const fallbackDates = getRecentTradingDays(5);
           const [availableDates, setAvailableDates] = useState(fallbackDates);
           const [selectedDate, setSelectedDate] = useState(fallbackDates[0]);
           const [realAiData, setRealAiData] = useState(null);
 
-          // 固定的股神投資心法 (永遠顯示)
+          // 固定的股神投資心法
           const guruProfiles = {
             buffett: { id: 'buffett', name: "華倫・巴菲特", title: "長抱安心型", desc: "尋找護城河深、每年穩穩賺錢、別人很難搶走生意的公司。適合不想天天看盤、想安心抱著領配息的人。" },
             lynch: { id: 'lynch', name: "彼得・林區", title: "抓爆發成長型", desc: "從生活周遭找正在「爆發性成長」的公司。重點是『它未來能賺更多嗎？』適合喜歡買在起飛點的人。" },
             graham: { id: 'graham', name: "班傑明・葛拉漢", title: "撿便宜安全牌", desc: "專挑價格委屈、被大家忽略的好公司。就像在特賣會撿便宜，重點是『買得夠便宜，就算大跌也不怕』。" }
           };
 
-          // 抓取 GitHub 上的真實資料
+          // 抓取 GitHub 真實資料
           useEffect(() => {
             const timestamp = new Date().getTime();
             fetch(`https://raw.githubusercontent.com/qaz7759112-cell/stock-assistant/main/data.json?t=${timestamp}`)
@@ -64,7 +61,6 @@
               .then(data => {
                 setRealAiData(data);
                 if (data) {
-                  // 動態萃取所有歷史日記日期
                   const dates = Object.keys(data).filter(k => k.includes('/')).sort((a,b) => new Date(b) - new Date(a));
                   if (dates.length > 0) {
                     setAvailableDates(dates);
@@ -75,10 +71,88 @@
               .catch(err => console.error('無法取得真實資料:', err));
           }, []);
 
+          // ==========================================
+          // 🔥 自選股功能：完全在網頁端操作與記憶
+          // ==========================================
+          const [apiKey, setApiKey] = useState(() => localStorage.getItem('geminiApiKey_stock_assistant') || '');
+          const [apiKeyError, setApiKeyError] = useState('');
+          const [loadingStockId, setLoadingStockId] = useState(null);
+          const [isEditingKey, setIsEditingKey] = useState(() => !localStorage.getItem('geminiApiKey_stock_assistant'));
+
+          const [customStocks, setCustomStocks] = useState(() => {
+            const saved = localStorage.getItem('myCustomStocks_v5');
+            if (saved) return JSON.parse(saved);
+            return []; 
+          });
+          const [newStockInput, setNewStockInput] = useState('');
+          const [showSuggestions, setShowSuggestions] = useState(false);
+
+          useEffect(() => localStorage.setItem('geminiApiKey_stock_assistant', apiKey), [apiKey]);
+          useEffect(() => localStorage.setItem('myCustomStocks_v5', JSON.stringify(customStocks)), [customStocks]);
+
+          const commonStocks = [
+            { code: "2330", name: "台積電" }, { code: "2317", name: "鴻海" }, { code: "2454", name: "聯發科" },
+            { code: "2382", name: "廣達" }, { code: "2308", name: "台達電" }, { code: "1519", name: "華城" }
+          ];
+
+          // 新增自選股 (完全不需去後台)
+          const handleAddStock = (e) => {
+            e.preventDefault();
+            if (!newStockInput.trim()) return;
+            const newStock = {
+              id: Date.now(),
+              name: newStockInput,
+              addedAt: new Date().toISOString(), 
+              aiResult: null 
+            };
+            setCustomStocks([newStock, ...customStocks]);
+            setNewStockInput('');
+          };
+
+          const handleDeleteStock = (id) => {
+            setCustomStocks(customStocks.filter(s => s.id !== id));
+          };
+
+          // 呼叫 Gemini AI 進行即時分析
+          const handleAnalyzeStock = async (stock) => {
+            if (!apiKey) {
+              setApiKeyError('⚠️ 請先輸入上方的 API Key 才能啟用即時預測');
+              setIsEditingKey(true);
+              return;
+            }
+            setApiKeyError('');
+            setLoadingStockId(stock.id);
+
+            try {
+              const prompt = `現在是台灣時間。請作為專業台股分析師，針對股票「${stock.name}」進行今日走勢判斷。
+請嚴格以 JSON 格式回傳 (不要加 markdown 標記)：
+{"trend": "看漲" 或 "看跌" 或 "盤整", "reason": "50字內判斷原因(資金面或消息面)"}`;
+              
+              const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+              });
+
+              const data = await response.json();
+              if (data.error) throw new Error(data.error.message);
+              
+              let text = data.candidates[0].content.parts[0].text;
+              text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+              const result = JSON.parse(text);
+
+              setCustomStocks(prev => prev.map(s => s.id === stock.id ? { ...s, aiResult: result } : s));
+            } catch (err) {
+              alert("分析失敗，請檢查 API Key 是否正確。詳細錯誤：" + err.message);
+            } finally {
+              setLoadingStockId(null);
+            }
+          };
+
+          // ==========================================
+
           const UpText = ({ children }) => <span className="text-red-500 font-bold">{children}</span>;
           const DownText = ({ children }) => <span className="text-green-500 font-bold">{children}</span>;
-          
-          // 漲跌幅美化工具
           const renderDiffTag = (diff, isIndex = false) => {
             if (!diff && diff !== 0) return null;
             const numDiff = parseFloat(diff);
@@ -88,7 +162,6 @@
             return <span className={`font-bold text-gray-300 bg-gray-500/20 rounded ${px}`}>- 0</span>;
           };
 
-          // 根據選擇的日期讀取對應的資料
           let currentRadarData = null;
           if (realAiData && realAiData[selectedDate]) {
             currentRadarData = realAiData[selectedDate];
@@ -97,9 +170,6 @@
           const isRadarData = !!currentRadarData;
           const displayDate = isRadarData && currentRadarData.date ? currentRadarData.date.replace(/-/g, '/') : selectedDate;
 
-          // =========================================================
-          // 🔥 100% 全真實資料對接，無資料則顯示安全防護文字
-          // =========================================================
           const displayData = {
             twii: isRadarData && currentRadarData.twii ? currentRadarData.twii : { price: "--", diff: 0 },
             nikkei: isRadarData && currentRadarData.nikkei ? currentRadarData.nikkei : { price: "--", diff: 0 },
@@ -113,7 +183,6 @@
             ai: isRadarData && currentRadarData.ai_analysis ? currentRadarData.ai_analysis : {
               status_light: "⚪ 系統等待更新", status_desc: "本日資料尚未產生，請確認 GitHub 機器人是否已在 08:30 執行。", warning_event: "請手動觸發機器人，或等待明日更新。"
             },
-            custom_stocks: isRadarData && currentRadarData.custom_stocks ? currentRadarData.custom_stocks : [],
             dark_horses: isRadarData && currentRadarData.dark_horses ? currentRadarData.dark_horses : [],
             intraday_guide: isRadarData && currentRadarData.intraday_guide ? currentRadarData.intraday_guide : [],
             gurus: isRadarData && currentRadarData.gurus && Object.keys(currentRadarData.gurus).length > 0 ? currentRadarData.gurus : {},
@@ -121,7 +190,6 @@
             date: displayDate
           };
 
-          // 美化帶有加號或減號的純文字 (用於美股)
           const formatMarketValue = (valStr) => {
             if (!valStr) return "--";
             if (valStr.includes('+')) return <UpText>{valStr}</UpText>;
@@ -140,7 +208,6 @@
                 </div>
               </header>
 
-              {/* 日期選擇列 */}
               <div className="bg-white border-b border-gray-200 sticky top-[68px] z-10 shadow-sm">
                 <div className="max-w-6xl mx-auto p-3 flex items-center space-x-4 overflow-x-auto">
                   <div className="flex items-center text-gray-600 font-bold mr-2 whitespace-nowrap">
@@ -160,7 +227,8 @@
               </div>
 
               <main className="max-w-6xl mx-auto p-4 flex flex-col md:flex-row gap-6 mt-2">
-                {/* 左側選單 (7大頁面) */}
+                
+                {/* 重新排序的 7 大選單 */}
                 <aside className="w-full md:w-64 shrink-0">
                   <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden sticky top-[140px]">
                     <nav className="flex flex-col">
@@ -191,9 +259,7 @@
 
                 <section className="flex-1 min-w-0">
 
-                  {/* =========================================
-                      分頁 1：國際情勢
-                      ========================================= */}
+                  {/* 分頁 1：國際情勢 */}
                   {activeTab === 'intl' && (
                     <div className="space-y-6 animate-fadeIn">
                       <h2 className="text-2xl font-bold text-gray-800 flex items-center">
@@ -265,9 +331,7 @@
                     </div>
                   )}
                   
-                  {/* =========================================
-                      分頁 2：每日開盤前報導
-                      ========================================= */}
+                  {/* 分頁 2：每日開盤前報導 */}
                   {activeTab === 'morning' && (
                     <div className="space-y-6 animate-fadeIn">
                       <h2 className="text-2xl font-bold text-gray-800 flex items-center">
@@ -328,74 +392,105 @@
                     </div>
                   )}
 
-                  {/* =========================================
-                      分頁 3：我的自選股分析
-                      ========================================= */}
+                  {/* 分頁 3：我的自選股分析 (您要求的：網頁直接新增、不需後台) */}
                   {activeTab === 'custom' && (
                     <div className="space-y-6 animate-fadeIn">
                       <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                        <ListPlus className="mr-2 text-blue-600" /> 真 AI 每日自選股診斷
+                        <ListPlus className="mr-2 text-blue-600" /> 我的自選股分析
                       </h2>
                       
-                      <div className="bg-white border border-blue-200 rounded-xl overflow-hidden shadow-sm">
-                        <div className="bg-blue-50 p-4 border-b border-blue-100 flex items-center">
-                          <Settings className="w-5 h-5 text-blue-600 mr-2" />
-                          <h3 className="text-lg font-bold text-blue-900">⚙️ 如何新增或修改專屬分析清單？</h3>
-                        </div>
-                        <div className="p-5">
-                          <p className="text-sm text-gray-700 mb-4 leading-relaxed">
-                            為了確保 100% 執行全自動化的 AI 運算，請您直接於 GitHub 修改大腦檔案。<br/>
-                            <strong className="text-blue-600">💡 只要您今天設定好，明天早上 8:30 就會自動給出完美的盤前預測與走勢判斷！</strong>
-                          </p>
-                          <ol className="list-decimal list-inside space-y-2 text-sm text-gray-700 font-medium">
-                            <li>前往您的 GitHub 專案。</li>
-                            <li>打開並編輯 <code className="bg-gray-100 px-1.5 py-0.5 rounded text-red-500 font-mono">update_data.py</code> 檔案。</li>
-                            <li>找到約第 36 行的 <code className="bg-gray-100 px-1.5 py-0.5 rounded text-blue-600 font-mono">my_stocks</code> 區塊，加入您的股票（台灣股票請加上 .TW）。</li>
-                          </ol>
+                      {/* API Key 綁定區塊 */}
+                      <div className="bg-slate-800 p-5 rounded-xl shadow-md flex flex-col md:flex-row items-center gap-4">
+                        <Key className="w-8 h-8 text-yellow-400 shrink-0" />
+                        <div className="flex-1 w-full">
+                          {isEditingKey ? (
+                            <>
+                              <div className="text-white font-bold mb-2 flex items-center">
+                                綁定您的 Gemini API 鑰匙以啟用即時預測
+                                <span className="ml-2 text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">僅儲存於本機瀏覽器，安全無虞</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <input type="password" value={apiKey} onChange={e => { setApiKey(e.target.value); setApiKeyError(''); }} 
+                                  placeholder="貼上您的 AIzaSy... 鑰匙" className="w-full bg-slate-700 text-white border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-400" />
+                                <button onClick={() => { if(apiKey) setIsEditingKey(false); else setApiKeyError('請輸入鑰匙'); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold whitespace-nowrap transition-colors">儲存</button>
+                              </div>
+                              {apiKeyError && <div className="text-red-400 text-sm mt-2 font-bold">{apiKeyError}</div>}
+                            </>
+                          ) : (
+                            <div className="flex justify-between items-center w-full">
+                              <div className="text-green-400 font-bold flex items-center text-lg"><CheckCircle className="w-6 h-6 mr-2" /> API 鑰匙已安全綁定於本機</div>
+                              <button onClick={() => setIsEditingKey(true)} className="text-slate-300 hover:text-white text-sm underline font-medium">修改鑰匙</button>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-5 mt-6">
-                        {displayData.custom_stocks.length > 0 ? displayData.custom_stocks.map((stock, idx) => (
-                          <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                            <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
-                              <div>
-                                <h3 className="text-xl font-bold text-gray-800">{stock.name}</h3>
-                                <div className="text-sm font-medium text-gray-500 mt-1 flex items-baseline gap-2">
-                                  收盤價: <span className="text-lg text-gray-700">{stock.price}</span> {renderDiffTag(stock.diff)}
+                      {/* 輸入框完全回歸，並可直接呼叫 AI */}
+                      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 className="text-sm font-bold text-gray-600 mb-3 flex items-center"><Target className="w-4 h-4 mr-1" /> 輸入想關注的股票：</h3>
+                        <form onSubmit={handleAddStock} className="flex gap-2 relative">
+                          <div className="relative flex-1">
+                            <input type="text" value={newStockInput} onChange={(e) => { setNewStockInput(e.target.value); setShowSuggestions(true); }}
+                              onFocus={() => setShowSuggestions(true)} placeholder="輸入代號或名稱 (例如: 2382 廣達)" className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-gray-700" />
+                            {showSuggestions && newStockInput && (
+                              <ul className="absolute z-10 w-full bg-white border mt-1 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                                {commonStocks.filter(s => s.code.includes(newStockInput) || s.name.includes(newStockInput)).map(s => (
+                                    <li key={s.code} className="p-3 hover:bg-blue-50 cursor-pointer border-b flex items-center" onMouseDown={(e) => { e.preventDefault(); setNewStockInput(`${s.code} ${s.name}`); setShowSuggestions(false); }}>
+                                      <span className="font-bold text-blue-600 w-12">{s.code}</span><span className="text-gray-700 font-medium">{s.name}</span>
+                                    </li>
+                                  ))}
+                              </ul>
+                            )}
+                          </div>
+                          <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold flex items-center shrink-0 transition-colors">
+                            <Plus className="w-5 h-5 mr-1" /> 加入清單
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* 自選股清單與即時 AI 判斷按鈕 */}
+                      <div className="grid grid-cols-1 gap-5">
+                        {customStocks.length === 0 ? (
+                          <div className="text-gray-400 text-center py-10 bg-white rounded-xl border border-gray-200 border-dashed">清單空空如也，快在上方加入您關注的股票吧！</div>
+                        ) : customStocks.map(stock => {
+                          const addedDateStr = new Date(stock.addedAt).toLocaleString('zh-TW', { month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+                          return (
+                            <div key={stock.id} className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-blue-300 transition-all group">
+                              <div className="flex justify-between items-start mb-4">
+                                <div>
+                                  <h3 className="text-2xl font-extrabold text-gray-800">{stock.name}</h3>
+                                  <div className="text-xs text-gray-400 mt-1 flex items-center"><Clock className="w-3 h-3 mr-1" /> 新增時間：{addedDateStr}</div>
                                 </div>
+                                <button onClick={() => handleDeleteStock(stock.id)} className="text-gray-300 hover:text-red-500 p-2 rounded-lg hover:bg-red-50" title="刪除"><Trash2 className="w-5 h-5" /></button>
                               </div>
-                              <div className={`px-4 py-2 rounded-full font-bold flex items-center shadow-sm ${
-                                stock.trend.includes('漲') ? 'bg-red-100 text-red-600 border border-red-200' : 
-                                stock.trend.includes('跌') ? 'bg-green-100 text-green-600 border border-green-200' : 
-                                stock.trend.includes('等待') ? 'bg-gray-100 text-gray-600 border border-gray-200' :
-                                'bg-yellow-100 text-yellow-700 border border-yellow-200'
-                              }`}>
-                                {stock.trend.includes('漲') && <TrendingUp className="w-4 h-4 mr-1"/>}
-                                {stock.trend.includes('跌') && <TrendingDown className="w-4 h-4 mr-1"/>}
-                                {stock.trend.includes('盤整') && <ArrowRight className="w-4 h-4 mr-1"/>}
-                                AI 判斷：{stock.trend}
-                              </div>
+
+                              {stock.aiResult ? (
+                                <div className="bg-blue-50/50 p-5 rounded-xl border border-blue-100 relative">
+                                  <div className="flex justify-between items-center mb-3">
+                                    <div className={`px-4 py-1.5 rounded-full font-bold flex items-center text-sm ${stock.aiResult.trend.includes('漲') ? 'bg-red-100 text-red-700 border border-red-200' : stock.aiResult.trend.includes('跌') ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-yellow-100 text-yellow-700 border border-yellow-200'}`}>
+                                      {stock.aiResult.trend.includes('漲') && <TrendingUp className="w-4 h-4 mr-1"/>}
+                                      {stock.aiResult.trend.includes('跌') && <TrendingDown className="w-4 h-4 mr-1"/>}
+                                      {stock.aiResult.trend.includes('盤整') && <ArrowRight className="w-4 h-4 mr-1"/>} AI 判斷：{stock.aiResult.trend}
+                                    </div>
+                                    <button onClick={() => handleAnalyzeStock(stock)} disabled={loadingStockId === stock.id} className="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center bg-white px-3 py-1 rounded shadow-sm border border-blue-200">
+                                      {loadingStockId === stock.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}重新判斷
+                                    </button>
+                                  </div>
+                                  <div className="text-gray-700 leading-relaxed text-sm"><strong className="text-blue-800 flex items-center mb-1"><Search className="w-4 h-4 mr-1"/> 判斷原因：</strong>{stock.aiResult.reason}</div>
+                                </div>
+                              ) : (
+                                <button onClick={() => handleAnalyzeStock(stock)} disabled={loadingStockId === stock.id} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white px-5 py-4 rounded-xl font-bold flex justify-center items-center shadow-md transition-transform hover:scale-[1.01]">
+                                  {loadingStockId === stock.id ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> AI 即時運算中...</> : <><Play className="w-5 h-5 mr-2 fill-current" /> 立即讓 AI 進行走勢分析</>}
+                                </button>
+                              )}
                             </div>
-                            <div className="bg-gray-50 p-4 rounded-lg text-gray-700 leading-relaxed border border-gray-100">
-                              <strong className="text-blue-700 flex items-center mb-2"><Activity className="w-4 h-4 mr-1"/> AI 判斷原因：</strong>
-                              <p className="text-sm">{stock.reason}</p>
-                            </div>
-                          </div>
-                        )) : (
-                          <div className="text-gray-500 p-10 text-center bg-white rounded-xl border border-gray-200 border-dashed flex flex-col items-center">
-                            <Search className="w-10 h-10 text-gray-300 mb-3" />
-                            <p>尚無 AI 自選股分析紀錄。</p>
-                            <p className="text-sm mt-1">請確認 <code className="bg-gray-100 px-1 rounded">update_data.py</code> 設定，並等待 08:30 系統執行。</p>
-                          </div>
-                        )}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
 
-                  {/* =========================================
-                      分頁 4：股神幫你挑好股
-                      ========================================= */}
+                  {/* 分頁 4：股神幫你挑好股 (您要求的：最少 3 支) */}
                   {activeTab === 'gurus' && (
                     <div className="space-y-6 animate-fadeIn">
                       <h2 className="text-2xl font-bold text-gray-800 flex items-center">
@@ -422,7 +517,7 @@
                               <div key={idx} className="border border-gray-200 rounded-lg p-5 hover:shadow-md transition-shadow">
                                 <div className="flex justify-between items-start mb-3">
                                   <span className="text-lg font-bold text-blue-800">{stock.name} <span className="text-sm text-gray-500 ml-1">@{stock.price}</span></span>
-                                  <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">系統評分: {stock.score}</span>
+                                  <span className="bg-green-100 text-green-800 text-xs font-bold px-2 py-1 rounded">評分: {stock.score}</span>
                                 </div>
                                 <p className="text-sm text-gray-600 mt-2 leading-relaxed">{stock.reason}</p>
                               </div>
@@ -437,9 +532,7 @@
                     </div>
                   )}
 
-                  {/* =========================================
-                      分頁 5：今日五檔大黑馬
-                      ========================================= */}
+                  {/* 分頁 5：今日五檔大黑馬 (您要求的：補滿 5 檔) */}
                   {activeTab === 'darkhorse' && (
                     <div className="space-y-6 animate-fadeIn">
                       <h2 className="text-2xl font-bold text-gray-800 flex items-center">
@@ -449,6 +542,7 @@
                         {displayData.dark_horses.length > 0 ? displayData.dark_horses.map((horse, idx) => (
                           <div key={idx} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
                             <div className="text-xl font-bold text-gray-800 mb-3 flex items-center">
+                              <span className="bg-slate-800 text-white w-6 h-6 rounded-full flex items-center justify-center text-sm mr-2">{idx + 1}</span>
                               {horse.name} <span className="text-sm text-gray-500 ml-2 font-normal">位階: {horse.price}</span>
                               <span className="ml-3 text-xs bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-bold">{horse.sector}</span>
                             </div>
@@ -457,14 +551,12 @@
                               <div><div className="text-xs text-gray-500 font-bold mb-1 flex items-center"><Target className="w-3 h-3 mr-1"/>延續性判斷</div><div className="text-sm text-gray-700 leading-relaxed">{horse.sustain}</div></div>
                             </div>
                           </div>
-                        )) : <div className="text-gray-500 p-10 text-center bg-white rounded-xl border border-gray-200 border-dashed">等待 AI 生成黑馬清單...</div>}
+                        )) : <div className="text-gray-500 p-10 text-center bg-white rounded-xl border border-gray-200 border-dashed">等待 AI 生成 5 檔黑馬清單...</div>}
                       </div>
                     </div>
                   )}
 
-                  {/* =========================================
-                      分頁 6：盤中即時監測
-                      ========================================= */}
+                  {/* 分頁 6：盤中即時監測 */}
                   {activeTab === 'intraday' && (
                     <div className="space-y-6 animate-fadeIn">
                       <h2 className="text-2xl font-bold text-gray-800 flex items-center">
@@ -477,11 +569,12 @@
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
-                          { time: '09', title: '09:30 早盤確認' },
-                          { time: '10', title: '10:30 盤中轉折' },
-                          { time: '12', title: '12:30 尾盤佈局' }
+                          { time: '09:30', title: '09:30 早盤確認' },
+                          { time: '10:30', title: '10:30 盤中轉折' },
+                          { time: '12:30', title: '12:30 尾盤佈局' }
                         ].map((slot) => {
-                          const slotData = displayData.intraday_guide.find(item => item.time && item.time.includes(slot.time));
+                          const slotHour = slot.time.split(':')[0];
+                          const slotData = displayData.intraday_guide.find(item => item.time && item.time.includes(slotHour));
                           return (
                             <div key={slot.time} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col h-full hover:shadow-md transition-shadow">
                               <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
@@ -509,9 +602,7 @@
                     </div>
                   )}
 
-                  {/* =========================================
-                      分頁 7：檢討昨日預測
-                      ========================================= */}
+                  {/* 分頁 7：檢討昨日預測 */}
                   {activeTab === 'prediction' && (
                     <div className="space-y-6 animate-fadeIn">
                       <h2 className="text-2xl font-bold text-gray-800 flex items-center">
