@@ -268,5 +268,56 @@
             "gap": "看錯",
             "detail": "昨日市場受到國際局勢與資金流動的雙重影響，未能如預期走穩，反而呈現大幅下跌，顯示市場風險意識升高，賣壓較預期沉重。"
         }
+    },
+    "2026/04/20": {
+        "date": "2026/04/20",
+        "twii": {
+            "price": 37184.28,
+            "diff": 379.94
+        },
+        "nikkei": {
+            "price": 58899.49,
+            "diff": 423.59
+        },
+        "kospi": {
+            "price": 6255.2,
+            "diff": 63.28
+        },
+        "usd_twd": {
+            "price": 31.5,
+            "diff": -0.06
+        },
+        "gold": {
+            "price": 0,
+            "diff": 0
+        },
+        "oil": {
+            "price": 0,
+            "diff": 0
+        },
+        "vix": {
+            "price": 0,
+            "diff": 0
+        },
+        "usMarket": {
+            "dow": "49447.43 (+868.71)",
+            "sp500": "7126.06 (+84.78)",
+            "nasdaq": "24468.48 (+365.78)",
+            "events": "等待 AI 判斷中"
+        },
+        "twFlow": {
+            "conclusion": "等待更新",
+            "foreign": "未知",
+            "trust": "未知"
+        },
+        "ai_analysis": {
+            "status_light": "⚪ 系統連線中",
+            "status_desc": "AI 正在分析中...",
+            "warning_event": "等待分析"
+        },
+        "dark_horses": [],
+        "intraday_guide": [],
+        "gurus": {},
+        "prediction_review": {}
     }
 }
