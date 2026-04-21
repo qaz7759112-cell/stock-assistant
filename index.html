@@ -16,8 +16,32 @@
         import { 
           LineChart, Clock, Activity, Target, Zap, DollarSign, 
           BookOpen, Globe, Award, Search, AlertCircle,
-          History, ListPlus, CheckCircle, XCircle, Info, TrendingUp, TrendingDown, Calendar, ArrowRight, Settings, Key, Loader2, Play, RefreshCw, Trash2, Plus
+          History, ListPlus, CheckCircle, XCircle, Info, TrendingUp, TrendingDown, Calendar, ArrowRight, Settings, Key, Loader2, Play, RefreshCw, Trash2, Plus, Cloud, Upload, Download
         } from 'https://esm.sh/lucide-react@0.292.0?deps=react@18.2.0';
+
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+        // ==========================================
+        // ⚙️ 個人專屬設定區：強制寫死跳板網址
+        // ==========================================
+        // 已經幫您把先前建立好的專屬跳板網址填入，再也不用從網頁輸入了！
+        const MY_PROXY_URL = "https://stock-proxy.qaz7759112.workers.dev";
+        // ==========================================
+
+        let app, auth, db;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        try {
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+            if (firebaseConfig) {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+            }
+        } catch (e) {
+            console.error('Firebase init failed', e);
+        }
 
         // 產生預設日期
         const getRecentTradingDays = (count, startDate = new Date()) => {
@@ -53,28 +77,57 @@
             graham: { id: 'graham', name: "班傑明・葛拉漢", title: "撿便宜安全牌", desc: "專挑價格委屈、被大家忽略的好公司。就像在特賣會撿便宜，重點是『買得夠便宜，就算大跌也不怕』。" }
           };
 
-          // 抓取 GitHub 真實資料
+          const [user, setUser] = useState(null);
+          const [syncStatus, setSyncStatus] = useState('');
+
+          // 抓取 GitHub 真實資料 (自動備援機制)
           useEffect(() => {
-            const timestamp = new Date().getTime();
-            fetch(`https://raw.githubusercontent.com/qaz7759112-cell/stock-assistant/main/data.json?t=${timestamp}`)
-              .then(res => res.json())
-              .then(data => {
-                setRealAiData(data);
-                if (data) {
-                  const dates = Object.keys(data).filter(k => k.includes('/')).sort((a,b) => new Date(b) - new Date(a));
-                  if (dates.length > 0) {
-                    setAvailableDates(dates);
-                    setSelectedDate(dates[0]); 
-                  }
+            const loadData = async () => {
+              const timestamp = new Date().getTime();
+              const directGithubUrl = `https://raw.githubusercontent.com/qaz7759112-cell/stock-assistant/main/data.json?t=${timestamp}`;
+              
+              // 設定嘗試順序：如果設定了跳板，先試跳板；若失敗則自動退回直接連線 GitHub
+              let urlsToTry = [directGithubUrl];
+              if (MY_PROXY_URL && MY_PROXY_URL.trim() !== '') {
+                const baseUrl = MY_PROXY_URL.trim().replace(/\/$/, '');
+                urlsToTry = [`${baseUrl}/github?t=${timestamp}`, directGithubUrl];
+              }
+
+              let fetchedData = null;
+              let lastError = null;
+
+              for (const url of urlsToTry) {
+                try {
+                  const res = await fetch(url);
+                  if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
+                  fetchedData = await res.json();
+                  break; // 成功取得資料，跳出迴圈
+                } catch (err) {
+                  console.warn(`自 ${url} 取得資料失敗 (自動嘗試下一個):`, err);
+                  lastError = err;
                 }
-              })
-              .catch(err => console.error('無法取得真實資料:', err));
+              }
+
+              if (fetchedData) {
+                setRealAiData(fetchedData);
+                const dates = Object.keys(fetchedData).filter(k => k.includes('/')).sort((a,b) => new Date(b) - new Date(a));
+                if (dates.length > 0) {
+                  setAvailableDates(dates);
+                  setSelectedDate(dates[0]); 
+                }
+              } else {
+                console.error('無法取得真實資料:', lastError);
+              }
+            };
+            
+            loadData();
           }, []);
 
           // ==========================================
           // 🔥 自選股功能：完全在網頁端操作與記憶
           // ==========================================
           const [apiKey, setApiKey] = useState(() => localStorage.getItem('geminiApiKey_stock_assistant') || '');
+          const [syncCode, setSyncCode] = useState(() => localStorage.getItem('syncCode_stock_assistant') || '');
           const [apiKeyError, setApiKeyError] = useState('');
           const [loadingStockId, setLoadingStockId] = useState(null);
           const [isEditingKey, setIsEditingKey] = useState(() => !localStorage.getItem('geminiApiKey_stock_assistant'));
@@ -88,7 +141,24 @@
           const [showSuggestions, setShowSuggestions] = useState(false);
 
           useEffect(() => localStorage.setItem('geminiApiKey_stock_assistant', apiKey), [apiKey]);
+          useEffect(() => localStorage.setItem('syncCode_stock_assistant', syncCode), [syncCode]);
           useEffect(() => localStorage.setItem('myCustomStocks_v5', JSON.stringify(customStocks)), [customStocks]);
+
+          useEffect(() => {
+            if (!auth) return;
+            const initAuth = async () => {
+              try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                  await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                  await signInAnonymously(auth);
+                }
+              } catch (e) { console.error("Auth Error", e); }
+            };
+            initAuth();
+            const unsubscribe = onAuthStateChanged(auth, setUser);
+            return () => unsubscribe();
+          }, []);
 
           const commonStocks = [
             { code: "2330", name: "台積電" }, { code: "2317", name: "鴻海" }, { code: "2454", name: "聯發科" },
@@ -113,7 +183,7 @@
             setCustomStocks(customStocks.filter(s => s.id !== id));
           };
 
-          // 呼叫 Gemini AI 進行即時分析
+          // 呼叫 Gemini AI 進行即時分析 (自動備援機制)
           const handleAnalyzeStock = async (stock) => {
             if (!apiKey) {
               setApiKeyError('⚠️ 請先輸入上方的 API Key 才能啟用即時預測');
@@ -128,11 +198,38 @@
 請嚴格以 JSON 格式回傳 (不要加 markdown 標記)：
 {"trend": "看漲" 或 "看跌" 或 "盤整", "reason": "50字內判斷原因(資金面或消息面)"}`;
               
-              const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-              });
+              const directApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+              
+              // 設定嘗試順序：如果有跳板，先試跳板；失敗的話自動退回直接連線 Gemini API
+              let urlsToTry = [directApiUrl];
+              if (MY_PROXY_URL && MY_PROXY_URL.trim() !== '') {
+                  const baseUrl = MY_PROXY_URL.trim().replace(/\/$/, '');
+                  urlsToTry = [`${baseUrl}/gemini?key=${apiKey}`, directApiUrl];
+              }
+
+              let response;
+              let lastError;
+
+              for (const url of urlsToTry) {
+                 try {
+                    const res = await fetch(url, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                    });
+                    
+                    // 只要連線成功 (不管是否有 API key 報錯) 都保留此 Response
+                    response = res; 
+                    break;
+                 } catch (err) {
+                    console.warn(`自 ${url} 取得資料失敗 (自動嘗試下一個):`, err);
+                    lastError = err;
+                 }
+              }
+
+              if (!response) {
+                  throw lastError || new Error("無法連線至 AI 伺服器，請檢查網路狀態");
+              }
 
               const data = await response.json();
               if (data.error) throw new Error(data.error.message);
@@ -147,6 +244,36 @@
             } finally {
               setLoadingStockId(null);
             }
+          };
+
+          const handleUploadToCloud = async () => {
+            if (!user || !db) return setSyncStatus('❌ 系統無法連線至雲端');
+            let codeToUse = syncCode.trim().toUpperCase();
+            if (!codeToUse) { codeToUse = Math.random().toString(36).substring(2, 8).toUpperCase(); setSyncCode(codeToUse); }
+            setSyncStatus('⏳ 上傳中...');
+            try {
+              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'cloud_saves', codeToUse);
+              await setDoc(docRef, { customStocks, apiKey, updatedAt: new Date().toISOString() });
+              setSyncStatus(`✅ 上傳成功！您的同步碼是：${codeToUse}`);
+              setTimeout(() => setSyncStatus(''), 3000);
+            } catch (e) { setSyncStatus('❌ 上傳失敗：' + e.message); }
+          };
+
+          const handleDownloadFromCloud = async () => {
+            if (!user || !db) return setSyncStatus('❌ 系統無法連線至雲端');
+            if (!syncCode.trim()) return setSyncStatus('⚠️ 請先輸入您的同步碼');
+            setSyncStatus('⏳ 下載中...');
+            try {
+              const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'cloud_saves', syncCode.trim().toUpperCase());
+              const docSnap = await getDoc(docRef);
+              if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.customStocks) setCustomStocks(data.customStocks);
+                if (data.apiKey !== undefined) setApiKey(data.apiKey);
+                setSyncStatus('✅ 下載成功！資料與設定已還原。');
+                setTimeout(() => setSyncStatus(''), 3000);
+              } else { setSyncStatus('❌ 雲端找不到此同步碼。'); }
+            } catch (e) { setSyncStatus('❌ 下載失敗：' + e.message); }
           };
 
           // ==========================================
@@ -401,18 +528,35 @@
                       
                       {/* API Key 綁定區塊 */}
                       <div className="bg-slate-800 p-5 rounded-xl shadow-md flex flex-col md:flex-row items-center gap-4">
-                        <Key className="w-8 h-8 text-yellow-400 shrink-0" />
+                        <Key className="w-8 h-8 text-yellow-400 shrink-0 mt-1" />
                         <div className="flex-1 w-full">
                           {isEditingKey ? (
                             <>
-                              <div className="text-white font-bold mb-2 flex items-center">
+                              <div className="text-white font-bold mb-3 flex items-center">
                                 綁定您的 Gemini API 鑰匙以啟用即時預測
                                 <span className="ml-2 text-xs bg-slate-700 text-slate-300 px-2 py-1 rounded">僅儲存於本機瀏覽器，安全無虞</span>
                               </div>
-                              <div className="flex gap-2">
+                              
+                              <div className="flex flex-col gap-3 mb-4">
                                 <input type="password" value={apiKey} onChange={e => { setApiKey(e.target.value); setApiKeyError(''); }} 
-                                  placeholder="貼上您的 AIzaSy... 鑰匙" className="w-full bg-slate-700 text-white border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-400" />
-                                <button onClick={() => { if(apiKey) setIsEditingKey(false); else setApiKeyError('請輸入鑰匙'); }} className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-bold whitespace-nowrap transition-colors">儲存</button>
+                                  placeholder="貼上您的 Gemini API 鑰匙 (必填)" className="w-full bg-slate-700 text-white border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-400" />
+                              </div>
+
+                              <div className="flex flex-col gap-3 mb-4 border-t border-slate-600 pt-4 mt-2">
+                                <div className="text-white font-bold flex items-center">
+                                  <Cloud className="w-4 h-4 mr-2" /> 雲端進度同步 (跨裝置使用)
+                                </div>
+                                <div className="flex flex-col md:flex-row gap-2">
+                                  <input type="text" value={syncCode} onChange={e => setSyncCode(e.target.value)} 
+                                    placeholder="自訂或產生 6 碼同步碼" className="w-full md:w-1/3 bg-slate-700 text-white border border-slate-600 rounded-lg px-4 py-2 focus:outline-none focus:border-blue-400 font-mono uppercase" />
+                                  <button onClick={handleUploadToCloud} className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold transition-colors flex-1 flex justify-center items-center"><Upload className="w-4 h-4 mr-1"/> 上傳目前進度</button>
+                                  <button onClick={handleDownloadFromCloud} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg font-bold transition-colors flex-1 flex justify-center items-center"><Download className="w-4 h-4 mr-1"/> 下載雲端進度</button>
+                                </div>
+                                {syncStatus && <div className={`text-sm mt-1 font-bold ${syncStatus.includes('❌') || syncStatus.includes('⚠️') ? 'text-red-400' : 'text-green-400'}`}>{syncStatus}</div>}
+                              </div>
+
+                              <div className="flex gap-2">
+                                <button onClick={() => { if(apiKey) setIsEditingKey(false); else setApiKeyError('請輸入鑰匙'); }} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg font-bold whitespace-nowrap transition-colors w-full md:w-auto">儲存設定</button>
                               </div>
                               {apiKeyError && <div className="text-red-400 text-sm mt-2 font-bold">{apiKeyError}</div>}
                             </>
@@ -472,16 +616,18 @@
                                       {stock.aiResult.trend.includes('跌') && <TrendingDown className="w-4 h-4 mr-1"/>}
                                       {stock.aiResult.trend.includes('盤整') && <ArrowRight className="w-4 h-4 mr-1"/>} AI 判斷：{stock.aiResult.trend}
                                     </div>
-                                    <button onClick={() => handleAnalyzeStock(stock)} disabled={loadingStockId === stock.id} className="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center bg-white px-3 py-1 rounded shadow-sm border border-blue-200">
+                                    <button onClick={() => handleAnalyzeStock(stock)} disabled={loadingStockId === stock.id} className="text-blue-600 hover:text-blue-800 text-sm font-bold flex items-center bg-white px-3 py-1 rounded shadow-sm border border-blue-200 transition-colors">
                                       {loadingStockId === stock.id ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-1" />}重新判斷
                                     </button>
                                   </div>
                                   <div className="text-gray-700 leading-relaxed text-sm"><strong className="text-blue-800 flex items-center mb-1"><Search className="w-4 h-4 mr-1"/> 判斷原因：</strong>{stock.aiResult.reason}</div>
                                 </div>
                               ) : (
-                                <button onClick={() => handleAnalyzeStock(stock)} disabled={loadingStockId === stock.id} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white px-5 py-4 rounded-xl font-bold flex justify-center items-center shadow-md transition-transform hover:scale-[1.01]">
-                                  {loadingStockId === stock.id ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> AI 即時運算中...</> : <><Play className="w-5 h-5 mr-2 fill-current" /> 立即讓 AI 進行走勢分析</>}
-                                </button>
+                                <div className="mt-4">
+                                  <button onClick={() => handleAnalyzeStock(stock)} disabled={loadingStockId === stock.id} className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white px-5 py-4 rounded-xl font-bold flex justify-center items-center shadow-md transition-transform hover:scale-[1.01]">
+                                    {loadingStockId === stock.id ? <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> AI 即時運算中...</> : <><Play className="w-5 h-5 mr-2 fill-current" /> 立即讓 AI 進行走勢分析</>}
+                                  </button>
+                                </div>
                               )}
                             </div>
                           );
