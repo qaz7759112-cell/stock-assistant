@@ -437,20 +437,20 @@
             "diff": 57.88
         },
         "usd_twd": {
-            "price": 31.56,
-            "diff": 0.08
+            "price": 31.57,
+            "diff": 0.09
         },
         "gold": {
-            "price": 4734.4,
-            "diff": 1.9
+            "price": 4711.9,
+            "diff": -20.6
         },
         "oil": {
-            "price": 97.62,
-            "diff": -4.29
+            "price": 98.24,
+            "diff": -3.67
         },
         "vix": {
-            "price": 19.45,
-            "diff": 0.53
+            "price": 19.71,
+            "diff": 0.79
         },
         "usMarket": {
             "dow": "49490.03 (+340.65)",
