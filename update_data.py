@@ -1,143 +1,86 @@
-import os
-import json
 import yfinance as yf
-from google import genai
-from datetime import datetime, timedelta
+import json
+import os
+from datetime import datetime
+import pytz
 
-# 1. 取得 API 鑰匙
-api_key = os.environ.get("GEMINI_API_KEY")
-client = genai.Client(api_key=api_key)
-
-# 2. 定義抓價工具
-def get_price(ticker):
+def get_stock_data(ticker_symbol, include_ohlc=False):
+    """
+    負責向 Yahoo Finance 索取最新金融報價的函數
+    """
     try:
-        hist = yf.Ticker(ticker).history(period="2d")
-        curr = round(hist['Close'].iloc[-1], 2)
-        prev = round(hist['Close'].iloc[-2], 2)
-        diff = round(curr - prev, 2)
-        return curr, diff
-    except:
-        return 0, 0
-
-# 3. 抓取大盤、全球數據與美國三大指數
-twii, twii_diff = get_price("^TWII")
-nikkei, nikkei_diff = get_price("^N225")
-kospi, kospi_diff = get_price("^KS11")
-usd_twd, usd_diff = get_price("TWD=X")
-gold, gold_diff = get_price("GC=F")
-oil, oil_diff = get_price("BZ=F")
-vix, vix_diff = get_price("^VIX")
-dow, dow_diff = get_price("^DJI")
-sp500, sp500_diff = get_price("^GSPC")
-nasdaq, nasdaq_diff = get_price("^IXIC")
-
-yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y/%m/%d")
-
-# 4. 呼叫 Gemini 產出全真實分析 (加入強制數量指令)
-prompt = f"""
-現在是台灣時間早上 8:30，亞洲股市剛開盤。請根據以下真實最新數據，寫一份台股全方位分析報告：
-【全球與大盤數據】
-加權指數: {twii} (漲跌 {twii_diff}) 
-道瓊: {dow} / 標普500: {sp500} / 那斯達克: {nasdaq}
-日經: {nikkei} / 韓國: {kospi} / 美元台幣: {usd_twd} / VIX: {vix}
-
-請回傳嚴格的 JSON 格式 (絕對不要加 ```json 標記，直接從大括號開始)：
-{{
-  "status_light": "🔴 紅燈 (危險)、🟡 黃燈 (警戒)、或 🟢 綠燈 (安全)",
-  "status_desc": "今日台股大盤趨勢預測",
-  "warning_event": "今日大盤開盤操作建議",
-  "usMarket": {{
-    "events": "根據上述道瓊、標普、那斯達克的漲跌，一句話解說昨晚美股對今日台股的影響"
-  }},
-  "twFlow": {{
-    "conclusion": "一句話總結今日外資與投信可能的佈局方向",
-    "foreign": "預估買超或賣超",
-    "trust": "預估買超或賣超"
-  }},
-  "dark_horses": [
-    {{ "name": "股票名稱與代號", "price": "當前位階", "reason": "為什麼今天是黑馬", "sector": "產業", "sustain": "延續性判斷" }}
-    // ⚠️ 嚴格指令：請務必給出【剛好 5 檔】不同的黑馬股，不可多也不可少！
-  ],
-  "intraday_guide": [
-    {{ "time": "09:30 早盤確認", "title": "早盤判讀", "desc": "開盤要觀察什麼指標" }},
-    {{ "time": "10:30 盤中轉折", "title": "盤中確認", "desc": "趨勢確認方法" }},
-    {{ "time": "12:30 尾盤佈局", "title": "尾盤追蹤", "desc": "中尾盤操作建議" }}
-  ],
-  "gurus": {{
-    "buffett": {{ "name": "華倫・巴菲特 (長抱安心型)", "desc": "以巴菲特價值投資邏輯，今日適合買進的防禦型股票", "stocks": [
-      // ⚠️ 嚴格指令：請務必給出【剛好 3 檔】股票！
-      {{ "name": "代號 名稱", "price": "位階", "score": 90, "reason": "推薦原因" }}
-    ] }},
-    "lynch": {{ "name": "彼得・林區 (抓爆發成長型)", "desc": "以成長股邏輯，今日具備爆發力的股票", "stocks": [
-      // ⚠️ 嚴格指令：請務必給出【剛好 3 檔】股票！
-    ] }},
-    "graham": {{ "name": "班傑明・葛拉漢 (撿便宜安全牌)", "desc": "以撿便宜邏輯，今日被低估的股票", "stocks": [
-      // ⚠️ 嚴格指令：請務必給出【剛好 3 檔】股票！
-    ] }}
-  }},
-  "prediction_review": {{
-    "date": "{yesterday_str}",
-    "prediction": "預測昨日大盤可能的走勢",
-    "actual": "昨日大盤實際收盤狀況({twii_diff}點)",
-    "accurate": true,
-    "gap": "命中 / 看錯",
-    "detail": "檢討原因"
-  }}
-}}
-"""
-
-try:
-    response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
-    ai_text = response.text.replace("```json", "").replace("```", "").strip()
-    ai_data = json.loads(ai_text)
-except Exception as e:
-    print("AI 生成失敗:", e)
-    ai_data = {}
-
-# 5. 整理並存檔
-today_str = datetime.now().strftime("%Y/%m/%d")
-
-new_data = {
-    "date": today_str,
-    "twii": {"price": twii, "diff": twii_diff},
-    "nikkei": {"price": nikkei, "diff": nikkei_diff},
-    "kospi": {"price": kospi, "diff": kospi_diff},
-    "usd_twd": {"price": usd_twd, "diff": usd_diff},
-    "gold": {"price": gold, "diff": gold_diff},
-    "oil": {"price": oil, "diff": oil_diff},
-    "vix": {"price": vix, "diff": vix_diff},
-    "usMarket": {
-        "dow": f"{dow} ({'+' if dow_diff > 0 else ''}{dow_diff})",
-        "sp500": f"{sp500} ({'+' if sp500_diff > 0 else ''}{sp500_diff})",
-        "nasdaq": f"{nasdaq} ({'+' if nasdaq_diff > 0 else ''}{nasdaq_diff})",
-        "events": ai_data.get("usMarket", {}).get("events", "等待 AI 判斷中")
-    },
-    "twFlow": ai_data.get("twFlow", {"conclusion": "等待更新", "foreign": "未知", "trust": "未知"}),
-    "ai_analysis": {
-        "status_light": ai_data.get("status_light", "⚪ 系統連線中"),
-        "status_desc": ai_data.get("status_desc", "AI 正在分析中..."),
-        "warning_event": ai_data.get("warning_event", "等待分析")
-    },
-    "dark_horses": ai_data.get("dark_horses", []),
-    "intraday_guide": ai_data.get("intraday_guide", []),
-    "gurus": ai_data.get("gurus", {}),
-    "prediction_review": ai_data.get("prediction_review", {})
-}
-
-history_data = {}
-if os.path.exists("data.json"):
-    try:
-        with open("data.json", "r", encoding="utf-8") as f:
-            content = f.read().strip()
-            if content:
-                history_data = json.loads(content)
-                if "date" in history_data and isinstance(history_data.get("date"), str):
-                    history_data = {history_data["date"].replace("-", "/"): history_data}
+        ticker = yf.Ticker(ticker_symbol)
+        # 抓取近 5 天資料，確保能避開假日拿到最新交易日
+        hist = ticker.history(period="5d")
+        
+        if len(hist) >= 2:
+            latest = hist.iloc[-1]
+            previous = hist.iloc[-2]
+            
+            # 收盤價與漲跌點數
+            close_price = round(latest['Close'], 2)
+            diff = round(close_price - previous['Close'], 2)
+            
+            # 加上正負號格式化
+            diff_str = f"+{diff}" if diff > 0 else str(diff)
+            
+            result = {
+                "price": str(close_price),
+                "diff": diff_str
+            }
+            
+            # 如果是台股大盤，額外抓取開、高、低
+            if include_ohlc:
+                result["open"] = str(round(latest['Open'], 2))
+                result["high"] = str(round(latest['High'], 2))
+                result["low"] = str(round(latest['Low'], 2))
+                
+            return result
+        return None
     except Exception as e:
-        pass
+        print(f"抓取 {ticker_symbol} 失敗: {e}")
+        return None
 
-history_data[today_str] = new_data
+def main():
+    # 1. 設定為台灣時間
+    tw_tz = pytz.timezone('Asia/Taipei')
+    date_str = datetime.now(tw_tz).strftime('%Y/%m/%d')
+    print(f"開始執行抓取任務，今日日期: {date_str}")
+    
+    # 2. 讀取現有的 data.json 檔案 (為了保留過去的歷史紀錄)
+    file_path = 'data.json'
+    all_data = {}
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                all_data = json.load(f)
+        except Exception as e:
+            print(f"讀取舊資料失敗: {e}")
+            
+    # 確保今天的資料節點存在
+    if date_str not in all_data:
+        all_data[date_str] = {}
 
-with open("data.json", "w", encoding="utf-8") as f:
-    json.dump(history_data, f, ensure_ascii=False, indent=4)
-print(f"{today_str} 數量強制修正版更新完成！")
+    # 3. 抓取全球金融大環境數據 (自動寫入或更新當天節點)
+    print("正在抓取 台股大盤(含開高低收)...")
+    twii_data = get_stock_data("^TWII", include_ohlc=True)
+    if twii_data: all_data[date_str]["twii"] = twii_data
+    
+    print("正在抓取 日經、韓國、恐慌指數...")
+    if nikkei := get_stock_data("^N225"): all_data[date_str]["nikkei"] = nikkei
+    if kospi := get_stock_data("^KS11"): all_data[date_str]["kospi"] = kospi
+    if vix := get_stock_data("^VIX"): all_data[date_str]["vix"] = vix
+    
+    print("正在抓取 匯率與原物料(黃金/原油)...")
+    if usd_twd := get_stock_data("TWD=X"): all_data[date_str]["usd_twd"] = usd_twd
+    if gold := get_stock_data("GC=F"): all_data[date_str]["gold"] = gold
+    if oil := get_stock_data("CL=F"): all_data[date_str]["oil"] = oil
+
+    # 4. 將合併後的最新數據寫回 data.json
+    with open(file_path, 'w', encoding='utf-8') as f:
+        json.dump(all_data, f, ensure_ascii=False, indent=2)
+        
+    print("✅ 資料更新成功！開高低收與國際指數已寫入 data.json。")
+
+if __name__ == "__main__":
+    main()
