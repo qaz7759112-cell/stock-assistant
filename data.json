@@ -441,16 +441,16 @@
             "diff": 0.08
         },
         "gold": {
-            "price": 4728.8,
-            "diff": -3.7
+            "price": 4734.4,
+            "diff": 1.9
         },
         "oil": {
-            "price": 103.26,
-            "diff": 1.35
+            "price": 97.62,
+            "diff": -4.29
         },
         "vix": {
-            "price": 0,
-            "diff": 0
+            "price": 19.45,
+            "diff": 0.53
         },
         "usMarket": {
             "dow": "49490.03 (+340.65)",
