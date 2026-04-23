@@ -1,0 +1,3 @@
+yfinance
+pytz
+5. 一樣點擊右上角的綠色按鈕 **「Commit changes...」** 存檔。
